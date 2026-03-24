@@ -8,7 +8,6 @@ const {
   PASSWORD_SETUP_LINK_EXPIRY,
   PASSWORD_SETUP_SECRET_KEY,
 } = require("../../config/envConfig");
-const { SUPER_ADMIN_UID } = require("../../constants/valueConstant");
 const resetPasswordEmail = require("../../templates/email_templates/resetPasswordMail");
 
 const User = db.users;
