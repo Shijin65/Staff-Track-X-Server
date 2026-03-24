@@ -2,8 +2,6 @@ import { Router } from "express";
 
 import Auth from "../domain/general/authentication";
 import UserController from "../domain/user/user.seeds";
-import userSchema from "../domain/user/user.validator";
-import validateSchema from "../middleware/validationMiddleware";
 
 const router = Router();
 
@@ -22,7 +20,6 @@ router.post("/logout", Auth.logout);
 // CHECK TEMPORARY PASSWORD
 router.post(
   "/check-temp-password/:id",
-  validateSchema(userSchema.checkSecretKey),
   UserController.checkSecretKey
 );
 
