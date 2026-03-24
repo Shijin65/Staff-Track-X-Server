@@ -1,0 +1,115 @@
+2026-03-16 15:22:20 [INFO]: Redis connected successfully!
+2026-03-16 15:23:28 [INFO]: Received SIGINT. Closing Sequelize connection...
+2026-03-16 15:34:45 [INFO]: Redis connected successfully!
+2026-03-16 15:35:29 [ERROR]: Error during login: Cannot read properties of undefined (reading 'replace')
+2026-03-16 15:36:33 [INFO]: Received SIGINT. Closing Sequelize connection...
+2026-03-16 15:40:25 [INFO]: Redis connected successfully!
+2026-03-16 15:57:58 [ERROR]: Error during login: Cannot read properties of undefined (reading 'replace')
+2026-03-16 15:59:44 [ERROR]: Error during login: Cannot read properties of undefined (reading 'replace')
+2026-03-16 16:00:13 [ERROR]: Error during login: Cannot read properties of undefined (reading 'replace')
+2026-03-16 16:02:03 [INFO]: Redis connected successfully!
+2026-03-16 16:02:51 [ERROR]: Error during login: secretOrPrivateKey must have a value
+2026-03-16 16:04:35 [INFO]: Redis connected successfully!
+2026-03-16 16:06:00 [INFO]: Redis connected successfully!
+2026-03-16 16:06:27 [ERROR]: Error during login: secretOrPrivateKey must have a value
+2026-03-16 16:07:14 [INFO]: Redis connected successfully!
+2026-03-16 17:07:59 [ERROR]: Error during login: secretOrPrivateKey must have a value
+2026-03-16 17:09:04 [INFO]: Redis connected successfully!
+2026-03-16 17:09:34 [INFO]: Redis connected successfully!
+2026-03-16 18:05:24 [INFO]: Received SIGINT. Closing Sequelize connection...
+2026-03-16 19:47:15 [ERROR]: Failed to connect to the database: database "base_app_db" does not exist
+2026-03-16 23:20:23 [ERROR]: Failed to sync permissions: Error updating admin role permissions: column "apiId" does not exist
+2026-03-16 23:21:17 [ERROR]: Failed to sync permissions: Error updating admin role permissions: column "apiId" does not exist
+2026-03-16 23:22:31 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:31 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:31 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:31 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:31 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:31 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:31 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:31 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:31 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:32 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:32 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:32 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:32 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:32 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:32 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:32 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:32 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:33 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:33 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:33 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:33 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:34 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:34 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:34 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:34 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:35 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:35 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:36 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:36 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:36 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:36 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:37 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:37 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:38 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:38 [ERROR]: Redis error: AggregateError
+2026-03-16 23:22:39 [INFO]: Received SIGINT. Closing Sequelize connection...
+2026-03-16 23:22:39 [INFO]: Received SIGINT. Closing Redis connection...
+2026-03-16 23:22:39 [WARN]: Reconnecting to Redis... Attempt: undefined
+2026-03-16 23:22:39 [ERROR]: Error syncing permissions to Redis: Cannot read properties of undefined (reading 'error')
+2026-03-16 23:22:39 [INFO]: Sequelize connection closed successfully.
+2026-03-16 23:34:17 [INFO]: Permissions synced successfully!
+2026-03-17 00:09:22 [INFO]: Permissions synced successfully!
+2026-03-17 00:09:22 [INFO]: Permissions loaded into memory cache
+2026-03-17 00:15:18 [INFO]: Permissions synced successfully!
+2026-03-17 00:15:18 [INFO]: Permissions loaded into memory cache
+2026-03-17 00:17:57 [INFO]: Permissions synced successfully!
+2026-03-17 00:17:57 [INFO]: Permissions loaded into memory cache
+2026-03-17 00:18:24 [INFO]: Permissions synced successfully!
+2026-03-17 00:18:24 [INFO]: Permissions loaded into memory cache
+2026-03-17 00:19:23 [INFO]: Permissions synced successfully!
+2026-03-17 00:19:23 [INFO]: Permissions loaded into memory cache
+2026-03-17 00:20:06 [INFO]: Permissions synced successfully!
+2026-03-17 00:20:06 [INFO]: Permissions loaded into memory cache
+2026-03-17 00:34:57 [INFO]: Permissions synced successfully!
+2026-03-17 00:34:57 [INFO]: Permissions loaded into memory cache
+2026-03-17 00:36:08 [INFO]: Permissions synced successfully!
+2026-03-17 00:36:08 [INFO]: Permissions loaded into memory cache
+2026-03-17 00:36:37 [INFO]: Permissions synced successfully!
+2026-03-17 00:36:37 [INFO]: Permissions loaded into memory cache
+2026-03-17 00:42:15 [INFO]: Permissions synced successfully!
+2026-03-17 00:42:15 [INFO]: Permissions loaded into memory cache
+2026-03-17 00:45:35 [INFO]: Received SIGINT. Closing Sequelize connection...
+2026-03-17 00:54:57 [INFO]: Permissions synced successfully!
+2026-03-17 00:54:57 [INFO]: Permissions loaded into memory cache
+2026-03-17 01:19:17 [INFO]: Permissions synced successfully!
+2026-03-17 01:19:17 [INFO]: Permissions loaded into memory cache
+2026-03-17 01:20:10 [INFO]: Received SIGINT. Closing Sequelize connection...
+2026-03-17 01:21:14 [INFO]: Permissions synced successfully!
+2026-03-17 01:21:14 [INFO]: Permissions loaded into memory cache
+2026-03-17 11:50:40 [INFO]: Permissions synced successfully!
+2026-03-17 11:50:40 [INFO]: Permissions loaded into memory cache
+2026-03-17 11:51:34 [ERROR]: Error during login: secretOrPrivateKey must have a value
+2026-03-17 11:51:37 [ERROR]: Error during login: secretOrPrivateKey must have a value
+2026-03-17 12:07:51 [INFO]: Received SIGINT. Closing Sequelize connection...
+2026-03-17 12:08:03 [INFO]: Permissions synced successfully!
+2026-03-17 12:08:03 [INFO]: Permissions loaded into memory cache
+2026-03-17 12:32:28 [INFO]: Permissions synced successfully!
+2026-03-17 12:32:28 [INFO]: Permissions loaded into memory cache
+2026-03-17 12:33:03 [INFO]: Permissions synced successfully!
+2026-03-17 12:33:03 [INFO]: Permissions loaded into memory cache
+2026-03-17 12:33:03 [INFO]: Received SIGINT. Closing Sequelize connection...
+2026-03-17 12:33:03 [INFO]: Sequelize connection closed successfully.
+2026-03-17 12:33:32 [INFO]: Permissions synced successfully!
+2026-03-17 12:33:32 [INFO]: Permissions loaded into memory cache
+2026-03-17 12:33:33 [INFO]: Received SIGINT. Closing Sequelize connection...
+2026-03-17 12:33:33 [INFO]: Sequelize connection closed successfully.
+2026-03-17 12:34:59 [INFO]: Permissions synced successfully!
+2026-03-17 12:34:59 [INFO]: Permissions loaded into memory cache
+2026-03-17 12:36:47 [INFO]: Permissions synced successfully!
+2026-03-17 12:36:47 [INFO]: Permissions loaded into memory cache
+2026-03-17 12:39:48 [INFO]: Permissions synced successfully!
+2026-03-17 12:39:48 [INFO]: Permissions loaded into memory cache
+2026-03-24 11:14:42 [ERROR]: Failed to connect to the database: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
