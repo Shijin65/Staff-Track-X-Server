@@ -1,6 +1,6 @@
 "use strict";
 
-const { SUPER_ADMIN_ROLE_ID, SUPER_ADMIN_UID } = require('../constants/valueConstant');
+const { SUPER_ADMIN_UID, SUPER_ADMIN_ROLE_ID } = require('../constants/valueConstant');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
@@ -19,13 +19,8 @@ module.exports = {
                         allowNull: false,
                     },
                     role_id: {
-                        type: Sequelize.UUID,
+                        type: Sequelize.INTEGER,
                         allowNull: false,
-                        references: {
-                            model: "user_roles",
-                            key: "role_id",
-                        },
-                        onDelete: "CASCADE",
                     },
                     first_name: {
                         type: Sequelize.STRING,
@@ -91,21 +86,6 @@ module.exports = {
                 { transaction },
             );
 
-            // Insert Super Admin role
-            await queryInterface.bulkInsert(
-                "user_roles",
-                [
-                    {
-                        role_id: SUPER_ADMIN_ROLE_ID,
-                        title: "SA",
-                        description: "Super Admin",
-                        created_by: SUPER_ADMIN_UID,
-                        created_at: new Date(),
-                        updated_at: new Date(),
-                    },
-                ],
-                { transaction },
-            );
 
             // Insert Super Admin user
             await queryInterface.bulkInsert(
@@ -137,8 +117,6 @@ module.exports = {
     },
 
     async down(queryInterface) {
-        await queryInterface.bulkDelete("users", { user_id: SUPER_ADMIN_UID });
-        await queryInterface.bulkDelete("user_roles", { role_id: SUPER_ADMIN_ROLE_ID });
         await queryInterface.dropTable("users");
     },
 };

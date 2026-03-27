@@ -6,11 +6,11 @@ import {
   ApiResponse,
   getPermissionsByRoleId,
   generateTokens,
+  getUserRole,
 } from "../../utils";
 
 import {
   REFRESH_SECRET_KEY,
-  PASSWORD_SETUP_SECRET_KEY,
   REQUIRE_SECURE_COOKIES,
 } from "../../config/envConfig";
 
@@ -36,13 +36,6 @@ class Auth {
 
       const user = await User.findOne({
         where: { email },
-        include: [
-          {
-            model: UserRoles,
-            as: "role",
-            attributes: ["roleId", "title"],
-          },
-        ],
       });
 
       if (!user) {
@@ -78,20 +71,12 @@ class Auth {
         return res.status(400).json(new ApiResponse(400, "Invalid credentials."));
       }
 
-      const userRole = {
-        roleId: user.role?.roleId,
-        title: user.role?.title,
-      };
-
-      const permissions = await getPermissionsByRoleId(
-        userRole.roleId,
-        user.isSuperAdmin
-      );
+      const userRole = getUserRole(user.roleId);
 
       const sessionUser = {
         userId: user.userId,
         roleId: userRole.roleId,
-        roleName: userRole.title,
+        roleName: userRole.name,
         isSuperAdmin: user.isSuperAdmin,
       };
 
@@ -122,12 +107,12 @@ class Auth {
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
-          role: userRole,
+          role: { roleId: userRole.roleId, name: userRole.name },
           phone: user.phone,
           isSuperAdmin: user.isSuperAdmin,
           isActive: user.isActive,
         },
-        availableAccess: permissions
+        availableAccess: userRole.permissions
       };
 
       return res.status(200).json(new ApiResponse(200, "Success.", responseData));
@@ -161,30 +146,22 @@ class Auth {
         logger.error(`Error during token refresh: ${err.message}`);
         return res.status(403).json(new ApiResponse(403, message));
       }
+      const { userId, roleId } = decoded.user;
 
-      if (!decoded.user?.roleId || !decoded.user?.userId) {
+      console.log(!userId, !roleId)
+      if (!userId || !roleId) {
         return res.status(404).json(new ApiResponse(404, "Invalid token."));
       }
 
       const user = await User.findOne({
-        where: { user_id: decoded.user.userId },
-        include: [
-          {
-            model: UserRoles,
-            as: "role",
-            attributes: ["roleId", "title"],
-          },
-        ],
+        where: { user_id: userId }
       });
 
       if (!user) {
         return res.status(404).json(new ApiResponse(404, "User not found."));
       }
 
-      const userRole = {
-        roleId: user.role?.roleId,
-        title: user.role?.title,
-      };
+      const userRole = getUserRole(user.roleId);
 
       if (!userRole) {
         return res.status(404).json(new ApiResponse(404, "Role not found."));
@@ -193,7 +170,7 @@ class Auth {
       const sessionUser = {
         userId: user.userId,
         roleId: userRole.roleId,
-        roleTitle: userRole.title,
+        roleName: userRole.name,
         isSuperAdmin: user.isSuperAdmin,
       };
 
@@ -226,13 +203,13 @@ class Auth {
           lastName: user.lastName,
           email: user.email,
           isSuperAdmin: user.isSuperAdmin,
-          isActive: user.isActive
+          isActive: user.isActive,
+          role: { roleId: userRole.roleId, name: userRole.name },
         },
-        role: userRole,
-        permissions,
+        availableAccess: permissions,
       };
 
-      return res.status(400).json(new ApiResponse(400, "Success.", responseData));
+      return res.status(200).json(new ApiResponse(200, "Success.", responseData));
     } catch (error: any) {
       logger.error(`Error during token refresh: ${error.message}`);
       return res

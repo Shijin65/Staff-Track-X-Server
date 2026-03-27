@@ -14,7 +14,7 @@ const Users = (sequelize, DataTypes) => {
       },
 
       roleId: {
-        type: DataTypes.UUID,
+        type: DataTypes.INTEGER,
         allowNull: false,
         field: "role_id",
       },
@@ -124,14 +124,6 @@ const Users = (sequelize, DataTypes) => {
       user.password = await bcrypt.hash(user.password, salt);
     }
   });
-
-  // Associations
-  User.associate = (models) => {
-    User.belongsTo(models.user_roles, {
-      foreignKey: "role_id",
-      as: "role",
-    });
-  };
 
   // Password verification
   User.prototype.verifyPassword = async function (password) {
