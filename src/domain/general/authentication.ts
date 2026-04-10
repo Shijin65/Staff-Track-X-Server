@@ -148,7 +148,6 @@ class Auth {
       }
       const { userId, roleId } = decoded.user;
 
-      console.log(!userId, !roleId)
       if (!userId || !roleId) {
         return res.status(404).json(new ApiResponse(404, "Invalid token."));
       }

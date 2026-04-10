@@ -9,10 +9,25 @@ router.get("/", protectRoute, UserController.getAll);
 
 
 //CREATE USER 
-// .post(
-//   [validateSchema(userSchema.create), accessControl()],
-//   UserController.create,
-// );
+router.post("/",
+    [protectRoute
+    // , validateSchema(userSchema.create), accessControl()
+    ],
+    UserController.create,
+);
+
+//UPDATE USER
+router.route("/:id").put(
+    [protectRoute
+    // , validateSchema(userSchema.update), accessControl()
+    ],
+    UserController.updateUser,
+).delete(
+    [protectRoute
+    // , validateSchema(userSchema.delete), accessControl()
+    ],
+    UserController.deleteUser,
+);
 
 // // GET USER BY ID
 // router

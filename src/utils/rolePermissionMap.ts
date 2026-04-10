@@ -26,7 +26,6 @@ export const ROLES = {
         name: "staff",
         permissions: [
             PERMISSIONS.VIEW_EVENT,
-
         ],
     },
 };

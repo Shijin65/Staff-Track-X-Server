@@ -1,9 +1,11 @@
+import { asyncHandler } from "../../middleware";
+import { sequelize } from "../../models";
+import welcomeEmail from "../../templates/email_templates/welcomeMail";
+
 const { Op } = require("sequelize");
 const jwt = require("jsonwebtoken");
-const { asyncHandler } = require("../../middleware");
 const db = require("../../models");
 const { ApiResponse } = require("../../utils");
-const welcomeEmail = require("../../templates/email_templates/welcomeMail");
 const {
   PASSWORD_SETUP_LINK_EXPIRY,
   PASSWORD_SETUP_SECRET_KEY,
@@ -11,16 +13,15 @@ const {
 const resetPasswordEmail = require("../../templates/email_templates/resetPasswordMail");
 
 const User = db.users;
-const UserRoles = db.user_roles;
-const RolePermission = db.role_permissions;
-const PermissionName = db.api_names;
+const Address = db.user_address;
 const AssignedUserRoles = db.assigned_user_roles;
-const Production = db.productions;
 const ProductionAccesses = db.production_accesses;
 class UserController {
   // GET ALL USER              ////////////////////////////////////////
 
   static getAll = asyncHandler(async (req, res) => {
+
+
     const {
       SortBy = "updatedAt",
       SortByAscending = "false",
@@ -30,8 +31,8 @@ class UserController {
       IsActive,
     } = req.query;
 
-    const page = parseInt(Page);
-    const limit = parseInt(Limit);
+    const page = parseInt(Page as string);
+    const limit = parseInt(Limit as string);
     const offset = (page - 1) * limit;
     const sortDirection = SortByAscending === "true" ? "ASC" : "DESC";
 
@@ -43,7 +44,7 @@ class UserController {
 
     // Search
     if (SearchQuery) {
-      const search = `%${SearchQuery.toLowerCase()}%`;
+      const search = `%${(SearchQuery as string).toLowerCase()}%`;
       whereClause[Op.or] = [
         { firstName: { [Op.iLike]: search } },
         { lastName: { [Op.iLike]: search } },
@@ -93,210 +94,234 @@ class UserController {
     );
   });
 
-  // GET USER BY ID   ////////////////////////////////////////
-  static getById = asyncHandler(async (req, res) => {
-    try {
-      const id = req.params.id;
-      const user = await User.findOne({
-        where: { userId: id },
-        include: [
-          {
-            model: AssignedUserRoles,
-            as: "assignedUserRoles",
-            attributes: ["role_id"],
-          },
-          {
-            model: ProductionAccesses,
-            as: "productionAccesses",
-            attributes: ["prod_id"],
-          },
-        ],
-      });
+  // // GET USER BY ID   ////////////////////////////////////////
+  // static getById = asyncHandler(async (req, res) => {
+  //   try {
+  //     const id = req.params.id;
+  //     const user = await User.findOne({
+  //       where: { userId: id },
+  //       include: [
+  //         {
+  //           model: AssignedUserRoles,
+  //           as: "assignedUserRoles",
+  //           attributes: ["role_id"],
+  //         },
+  //         {
+  //           model: ProductionAccesses,
+  //           as: "productionAccesses",
+  //           attributes: ["prod_id"],
+  //         },
+  //       ],
+  //     });
 
-      if (!user) {
-        res.status(404).json(new ApiResponse(404, "User not found."));
-      }
-      const productions =
-        user
-          .get({ plain: true })
-          .productionAccesses?.map(
-            (ProductionAccess) => ProductionAccess.prod_id
-          ) || [];
-      const roles =
-        user
-          .get({ plain: true })
-          .assignedUserRoles?.map((assignedRole) => assignedRole.role_id) || [];
+  //     if (!user) {
+  //       res.status(404).json(new ApiResponse(404, "User not found."));
+  //     }
+  //     const productions =
+  //       user
+  //         .get({ plain: true })
+  //         .productionAccesses?.map(
+  //           (ProductionAccess) => ProductionAccess.prod_id
+  //         ) || [];
+  //     const roles =
+  //       user
+  //         .get({ plain: true })
+  //         .assignedUserRoles?.map((assignedRole) => assignedRole.role_id) || [];
 
-      const response = {
-        email: user.email,
-        userId: id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        gender: user.gender,
-        isSuperAdmin: user.isSuperAdmin,
-        isActive: user.isActive,
-        roles: roles,
-        productions,
-      };
-      return res.json(new ApiResponse(200, "Success.", response));
-    } catch (error) {
-      console.log(error);
-      res.status(400).json(new ApiResponse(400, "Failed to get User."));
-    }
-  });
+  //     const response = {
+  //       email: user.email,
+  //       userId: id,
+  //       firstName: user.firstName,
+  //       lastName: user.lastName,
+  //       phone: user.phone,
+  //       gender: user.gender,
+  //       isSuperAdmin: user.isSuperAdmin,
+  //       isActive: user.isActive,
+  //       roles: roles,
+  //       productions,
+  //     };
+  //     return res.json(new ApiResponse(200, "Success.", response));
+  //   } catch (error) {
+  //     console.log(error);
+  //     res.status(400).json(new ApiResponse(400, "Failed to get User."));
+  //   }
+  // });
 
-  //// GET USER PERMISSION BY ID            ////////////////////////////////////////
-  static getPermissionById = asyncHandler(async (req, res) => {
-    try {
-      const id = req.params.id;
-      const user = await User.findOne({
-        where: { userId: id },
-        include: [
-          {
-            model: AssignedUserRoles,
-            as: "assignedUserRoles",
-            attributes: ["role_id"],
-            include: [
-              {
-                model: UserRoles,
-                as: "roles",
-                attributes: ["roleId", "title"],
-                raw: true,
-              },
-            ],
-          },
-          {
-            model: ProductionAccesses,
-            as: "productionAccesses",
-            attributes: ["prod_id"],
-            include: [
-              {
-                model: Production,
-                as: "production",
-                attributes: ["prodId", "productionName"],
-                raw: true,
-              },
-            ],
-          },
-        ],
-      });
+  // //// GET USER PERMISSION BY ID            ////////////////////////////////////////
+  // static getPermissionById = asyncHandler(async (req, res) => {
+  //   try {
+  //     const id = req.params.id;
+  //     const user = await User.findOne({
+  //       where: { userId: id },
+  //       include: [
+  //         {
+  //           model: AssignedUserRoles,
+  //           as: "assignedUserRoles",
+  //           attributes: ["role_id"],
+  //           include: [
+  //             {
+  //               model: UserRoles,
+  //               as: "roles",
+  //               attributes: ["roleId", "title"],
+  //               raw: true,
+  //             },
+  //           ],
+  //         },
+  //         {
+  //           model: ProductionAccesses,
+  //           as: "productionAccesses",
+  //           attributes: ["prod_id"],
+  //           include: [
+  //             {
+  //               model: Production,
+  //               as: "production",
+  //               attributes: ["prodId", "productionName"],
+  //               raw: true,
+  //             },
+  //           ],
+  //         },
+  //       ],
+  //     });
 
-      if (!user) {
-        res.status(404).json(new ApiResponse(404, "User not found."));
-      }
+  //     if (!user) {
+  //       res.status(404).json(new ApiResponse(404, "User not found."));
+  //     }
 
-      const productions =
-        user
-          .get({ plain: true })
-          .productionAccesses?.map(
-            (ProductionAccess) => ProductionAccess.production
-          ) || [];
+  //     const productions =
+  //       user
+  //         .get({ plain: true })
+  //         .productionAccesses?.map(
+  //           (ProductionAccess) => ProductionAccess.production
+  //         ) || [];
 
-      const roles =
-        user
-          .get({ plain: true })
-          .assignedUserRoles?.map((assignedRole) => assignedRole.roles) || [];
+  //     const roles =
+  //       user
+  //         .get({ plain: true })
+  //         .assignedUserRoles?.map((assignedRole) => assignedRole.roles) || [];
 
-      const apiPermissionData = await PermissionName.findAll({
-        raw: true,
-        attributes: ["name", "category", "apiId"],
-      });
+  //     const apiPermissionData = await PermissionName.findAll({
+  //       raw: true,
+  //       attributes: ["name", "category", "apiId"],
+  //     });
 
-      const roleIds = roles.map((role) => role.roleId);
-      const userRolePermission = await RolePermission.findAll({
-        where: { role_id: { [Op.in]: roleIds } },
-        attributes: ["apiId"],
-        raw: true,
-      }).then((permissions) => permissions.map(({ apiId }) => apiId));
+  //     const roleIds = roles.map((role) => role.roleId);
+  //     const userRolePermission = await RolePermission.findAll({
+  //       where: { role_id: { [Op.in]: roleIds } },
+  //       attributes: ["apiId"],
+  //       raw: true,
+  //     }).then((permissions) => permissions.map(({ apiId }) => apiId));
 
-      const updatedApis = apiPermissionData.map((api) => ({
-        ...api,
-        is_access: userRolePermission.includes(api.apiId),
-      }));
+  //     const updatedApis = apiPermissionData.map((api) => ({
+  //       ...api,
+  //       is_access: userRolePermission.includes(api.apiId),
+  //     }));
 
-      const response = {
-        userId: id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        email: user.email,
-        gender: user.gender,
-        isSuperAdmin: user.isSuperAdmin,
-        isActive: user.isActive,
-        roles,
-        permissions: updatedApis,
-        productions,
-      };
-      return res.json(new ApiResponse(200, "Success.", response));
-    } catch (error) {
-      console.log(error);
-      res.status(400).json(new ApiResponse(400, "Failed to get User."));
-    }
-  });
+  //     const response = {
+  //       userId: id,
+  //       firstName: user.firstName,
+  //       lastName: user.lastName,
+  //       phone: user.phone,
+  //       email: user.email,
+  //       gender: user.gender,
+  //       isSuperAdmin: user.isSuperAdmin,
+  //       isActive: user.isActive,
+  //       roles,
+  //       permissions: updatedApis,
+  //       productions,
+  //     };
+  //     return res.json(new ApiResponse(200, "Success.", response));
+  //   } catch (error) {
+  //     console.log(error);
+  //     res.status(400).json(new ApiResponse(400, "Failed to get User."));
+  //   }
+  // });
 
   // CREATE USER               ////////////////////////////////////////
   static create = asyncHandler(async (req, res) => {
-    const {
-      firstName,
-      lastName,
-      phone,
-      email,
-      isActive,
-      roleIds,
-      gender,
-      productionIds,
-    } = req.body;
+    const t = await sequelize.transaction();
+
     try {
-      const newUserDetails = await User.create({
+      const {
+        roleId,
         firstName,
         lastName,
-        phone,
+        mobileNumber,
         email,
         isActive,
         gender,
-      });
+        rating,
+        profileUpdated,
+        experience,
+        verification,
+        emergencyContact,
+        address,
+        state,
+        district,
+        city,
+        bloodGroup
+      } = req.body;
+
+      const newUserDetails = await User.create(
+        {
+          roleId,
+          firstName,
+          lastName,
+          mobileNumber,
+          email,
+          isActive,
+          gender,
+          rating,
+          profileUpdated,
+          experience,
+          verification,
+          emergencyContact,
+        },
+        { transaction: t }
+      );
+
       const newUser = newUserDetails.get({ plain: true });
 
       if (newUser) {
-        const assignedRoles = roleIds.map((id) => ({
-          roleId: id,
-          userId: newUser.userId,
-        }));
-
-        const accessProductions = productionIds.map((id) => ({
-          userId: newUser.userId,
-          productionId: id,
-        }));
-
-        await Promise.all([
-          AssignedUserRoles.bulkCreate(assignedRoles, {
-            returning: true,
-          }),
-          ProductionAccesses.bulkCreate(accessProductions, {
-            returning: true,
-          }),
-        ]);
-
-        if (newUser.isActive) {
-          const jwtToken = await jwt.sign(
-            { userId: newUser.userId, linkType: "join" },
-            PASSWORD_SETUP_SECRET_KEY,
-            {
-              expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
-            }
-          );
-          await welcomeEmail(newUser, jwtToken);
-          newUserDetails.isMailSend = true;
-          await newUserDetails.save();
-        }
+        await Address.create(
+          {
+            userId: newUser.userId,
+            address: address || null,
+            state: state || null,
+            district: district || null,
+            city: city || null,
+            bloodGroup: bloodGroup || null,
+          },
+          { transaction: t }
+        );
       }
-      res
+
+      if (newUser.isActive) {
+        const jwtToken = await jwt.sign(
+          { userId: newUser.userId, linkType: "join" },
+          PASSWORD_SETUP_SECRET_KEY,
+          {
+            expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
+          }
+        );
+        await welcomeEmail(newUser, jwtToken);
+        newUserDetails.isMailSend = true;
+        await newUserDetails.save({ transaction: t });
+      }
+
+      await t.commit();
+
+      return res
         .status(201)
         .json(new ApiResponse(201, "User created successfully.", req.body));
+
     } catch (error) {
+      await t.rollback();
+
       console.error("Error creating user:", error);
-      res.status(400).json(new ApiResponse(400, "Failed to create User."));
+
+      return res
+        .status(400)
+        .json(new ApiResponse(400, error.message || "Failed to create User."));
     }
   });
 
@@ -307,63 +332,58 @@ class UserController {
       const {
         firstName,
         lastName,
-        phone,
+        mobileNumber,
         isActive,
         gender,
-        rolesToRemove,
-        rolesToAdd,
-        productionsToAdd,
-        productionsToRemove,
+        rating,
+        profileUpdated,
+        experience,
+        verification,
+        emergencyContact,
+        address,
+        state,
+        district,
+        city,
+        bloodGroup,
+        roleId
       } = req.body;
       const user = await User.findByPk(id);
       if (user) {
-        if (rolesToRemove.length > 0) {
-          await AssignedUserRoles.destroy({
-            where: {
-              userId: id,
-              roleId: rolesToRemove,
-            },
-          });
-        }
-
-        const assignedRoles = rolesToAdd.map((roleId) => ({
-          userId: id,
-          roleId,
-        }));
-
-        if (rolesToAdd.length > 0) {
-          await AssignedUserRoles.bulkCreate(assignedRoles, {
-            returning: true,
-          });
-        }
-
-        if (productionsToRemove.length > 0) {
-          await ProductionAccesses.destroy({
-            where: {
-              userId: id,
-              productionId: productionsToRemove,
-            },
-          });
-        }
-        const newProductions = productionsToAdd.map((production) => ({
-          userId: id,
-          productionId: production,
-        }));
-
-        if (productionsToAdd.length > 0) {
-          await ProductionAccesses.bulkCreate(newProductions, {
-            returning: true,
-          });
-        }
-
+        user.roleId = roleId;
         user.firstName = firstName;
         user.lastName = lastName;
-        user.phone = phone;
+        user.mobileNumber = mobileNumber;
         user.isActive = isActive;
         user.gender = gender;
+        user.rating = rating;
+        user.experience = experience;
+        user.verification = verification;
+        user.emergencyContact = emergencyContact;
+        if (profileUpdated !== undefined) {
+          user.profileUpdated = profileUpdated;
+        }
         user.updatedAt = Date.now();
         user.tokenInvalidDateTime = new Date();
         const updatedUser = await user.save();
+
+        let addressRecord = await Address.findOne({ where: { userId: id } });
+        if (addressRecord) {
+          addressRecord.address = address || null;
+          addressRecord.state = state || null;
+          addressRecord.district = district || null;
+          addressRecord.city = city || null;
+          addressRecord.bloodGroup = bloodGroup || null;
+          await addressRecord.save();
+        } else {
+          await Address.create({
+            userId: id,
+            address: address || null,
+            state: state || null,
+            district: district || null,
+            city: city || null,
+            bloodGroup: bloodGroup || null,
+          });
+        }
 
         if (!user?.isMailSend && isActive) {
           const jwtToken = await jwt.sign(
@@ -373,7 +393,7 @@ class UserController {
               expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
             }
           );
-          await welcomeEmail(updatedUser.dataValues, jwtToken);
+          // await welcomeEmail(updatedUser.dataValues, jwtToken);
           updatedUser.isMailSend = true;
           await updatedUser.save();
         }
@@ -394,10 +414,10 @@ class UserController {
   });
 
   // DELETE USER                ////////////////////////////////////////
-  static deleteOne = asyncHandler(async (req, res) => {
+  static deleteUser = asyncHandler(async (req, res) => {
     try {
       const { id } = req.params;
-      const loginUser = req.user.userId;
+      const loginUser = (req as any).user.userId;
 
       const user = await User.findByPk(id);
 
@@ -433,8 +453,7 @@ class UserController {
   static deleteMany = asyncHandler(async (req, res) => {
     try {
       const { ids } = req.body;
-      const loginUser = req.user.userId;
-
+      const loginUser = (req as any).user.userId;
       const users = await User.findAll({
         where: {
           userId: { [Op.in]: ids },
@@ -470,7 +489,7 @@ class UserController {
   //GET USER PROFILE DATA                 ////////////////////////////////////////
   static getProfile = asyncHandler(async (req, res) => {
     try {
-      const id = req.user.userId;
+      const id = (req as any).user.userId;
 
       const user = await User.findOne({
         where: { userId: id },
@@ -498,7 +517,7 @@ class UserController {
   // UPDATE USER PROFILE                ////////////////////////////////////////
   static updateUserProfile = asyncHandler(async (req, res) => {
     try {
-      const id = req.user.userId;
+      const id = (req as any).user.userId;
       const { firstName, lastName, phone, gender } = req.body;
 
       const user = await User.findByPk(id);
@@ -653,7 +672,7 @@ class UserController {
 
   // CHANGE PASSWORD TRIGGER    ////////////////////////////////////////
   static changePassword = asyncHandler(async (req, res) => {
-    const id = req.user.userId;
+    const id = (req as any).user.userId;
     const { newPassword } = req.body;
     try {
       const user = await User.findByPk(id);
@@ -737,7 +756,7 @@ class UserController {
   // CHECK CURRENT PASSWORD                ////////////////////////////////////////
   static checkCurrentPassword = asyncHandler(async (req, res) => {
     const { password } = req.body;
-    const id = req.user.userId;
+    const id = (req as any).user.userId;
 
     const user = await User.findByPk(id);
 

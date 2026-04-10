@@ -29,7 +29,7 @@ module.exports = {
                     last_name: {
                         type: Sequelize.STRING,
                     },
-                    phone: {
+                    mobile_number: {
                         type: Sequelize.STRING,
                     },
                     email: {
@@ -44,11 +44,32 @@ module.exports = {
                         type: Sequelize.STRING,
                         allowNull: true,
                     },
-                    blood_group: {
-                        type: Sequelize.STRING,
-                        allowNull: true,
-                    },
                     gender: {
+                        type: Sequelize.STRING,
+                    },
+                    rating: {
+                        type: Sequelize.FLOAT,
+                    },
+                    is_active: {
+                        type: Sequelize.BOOLEAN,
+                        allowNull: false,
+                        defaultValue: true,
+                    },
+                    is_mail_send: {
+                        type: Sequelize.BOOLEAN,
+                        defaultValue: false,
+                    },
+                    profile_updated: {
+                        type: Sequelize.BOOLEAN,
+                        defaultValue: false,
+                    },
+                    experience: {
+                        type: Sequelize.STRING,
+                    },
+                    verification: {
+                        type: Sequelize.STRING,
+                    },
+                    emergency_contact: {
                         type: Sequelize.STRING,
                     },
                     is_super_admin: {
@@ -56,21 +77,61 @@ module.exports = {
                         allowNull: false,
                         defaultValue: false,
                     },
-                    is_active: {
-                        type: Sequelize.BOOLEAN,
-                        allowNull: false,
-                        defaultValue: true,
-                    },
-                    token_invalid_date_time: {
-                        type: Sequelize.DATE,
-                    },
                     is_email_link_used: {
                         type: Sequelize.BOOLEAN,
                         defaultValue: false,
                     },
-                    is_mail_send: {
-                        type: Sequelize.BOOLEAN,
-                        defaultValue: false,
+                    token_invalid_date_time: {
+                        type: Sequelize.DATE,
+                    },
+                    created_at: {
+                        type: Sequelize.DATE,
+                        allowNull: false,
+                        defaultValue: Sequelize.NOW,
+                    },
+                    updated_at: {
+                        type: Sequelize.DATE,
+                        allowNull: false,
+                        defaultValue: Sequelize.NOW,
+                    },
+                },
+                { transaction },
+            );
+
+            // Create addresses table
+            await queryInterface.createTable(
+                "user_address",
+                {
+                    address_id: {
+                        type: Sequelize.UUID,
+                        defaultValue: Sequelize.UUIDV4,
+                        primaryKey: true,
+                        allowNull: false,
+                    },
+                    user_id: {
+                        type: Sequelize.UUID,
+                        allowNull: false,
+                        references: {
+                            model: "users",
+                            key: "user_id",
+                        },
+                        onUpdate: "CASCADE",
+                        onDelete: "CASCADE",
+                    },
+                    address: {
+                        type: Sequelize.TEXT,
+                    },
+                    state: {
+                        type: Sequelize.STRING,
+                    },
+                    district: {
+                        type: Sequelize.STRING,
+                    },
+                    city: {
+                        type: Sequelize.STRING,
+                    },
+                    blood_group: {
+                        type: Sequelize.STRING,
                     },
                     created_at: {
                         type: Sequelize.DATE,
@@ -96,7 +157,7 @@ module.exports = {
                         role_id: SUPER_ADMIN_ROLE_ID,
                         first_name: "Super",
                         last_name: "Admin",
-                        phone: "1234567890",
+                        mobile_number: "1234567890",
                         email: "admin@base.com",
                         password: "T9!vK2#xQ7@Lm5$R",
                         gender: "male",
@@ -117,6 +178,14 @@ module.exports = {
     },
 
     async down(queryInterface) {
-        await queryInterface.dropTable("users");
+        const transaction = await queryInterface.sequelize.transaction();
+        try {
+            await queryInterface.dropTable("user_address", { transaction });
+            await queryInterface.dropTable("users", { transaction });
+            await transaction.commit();
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
     },
 };

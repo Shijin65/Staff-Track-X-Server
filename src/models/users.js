@@ -30,8 +30,9 @@ const Users = (sequelize, DataTypes) => {
         field: "last_name",
       },
 
-      phone: {
+      mobileNumber: {
         type: DataTypes.STRING,
+        field: "mobile_number",
       },
 
       email: {
@@ -52,13 +53,31 @@ const Users = (sequelize, DataTypes) => {
         field: "temp_password",
       },
 
-      bloodGroup: {
-        type: DataTypes.STRING,
-        field: "blood_group",
-      },
-
       gender: {
         type: DataTypes.STRING,
+      },
+
+      rating: {
+        type: DataTypes.FLOAT,
+      },
+
+      profileUpdated: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        field: "profile_updated",
+      },
+
+      experience: {
+        type: DataTypes.STRING,
+      },
+
+      verification: {
+        type: DataTypes.STRING,
+      },
+
+      emergencyContact: {
+        type: DataTypes.STRING,
+        field: "emergency_contact",
       },
 
       isSuperAdmin: {
@@ -106,7 +125,7 @@ const Users = (sequelize, DataTypes) => {
     },
     {
       tableName: "users",
-      timestamps: false,
+      timestamps: true,
     }
   );
 
@@ -128,6 +147,13 @@ const Users = (sequelize, DataTypes) => {
   // Password verification
   User.prototype.verifyPassword = async function (password) {
     return await bcrypt.compare(password, this.password);
+  };
+
+  User.associate = (models) => {
+    User.hasOne(models.user_address, {
+      foreignKey: "user_id",
+      as: "address",
+    });
   };
 
   return User;
