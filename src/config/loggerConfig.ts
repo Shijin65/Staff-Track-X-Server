@@ -1,11 +1,11 @@
-const Logger = require("../utils/logger");
-const {
+import Logger from "../utils/logger";
+import {
   MAIN_LOG_DIR,
   EMAIL_LOG_DIR,
   LOG_FILE_NAME,
   LOG_MAX_SIZE,
   LOG_LEVEL,
-} = require("./envConfig");
+} from "./envConfig";
 
 /**
  * Application-wide main logger instance.
@@ -17,17 +17,17 @@ const {
  * - `debug(message)`: Logs a debug message.
  *
  * Example:
- * ```javascript
- * const { logger } = require("./config");
+ * ```typescript
+ * import { logger } from "./config/loggerConfig";
  * logger.info("This is an info message.");
  * logger.error("This is an error message.");
  * ```
  */
-const logger = new Logger({
-  logDir: MAIN_LOG_DIR,
-  fileName: LOG_FILE_NAME,
-  maxSize: LOG_MAX_SIZE,
-  level: LOG_LEVEL,
+export const logger = new Logger({
+  logDir: MAIN_LOG_DIR as string | undefined,
+  fileName: LOG_FILE_NAME as string | undefined,
+  maxSize: LOG_MAX_SIZE as string | undefined,
+  level: LOG_LEVEL as string | undefined,
 });
 
 /**
@@ -36,17 +36,15 @@ const logger = new Logger({
  * Logs messages related to email operations.
  *
  * Example:
- * ```javascript
- * const { emailLogger } = require("./config");
+ * ```typescript
+ * import { emailLogger } from "./config/loggerConfig";
  * emailLogger.info("This is an email info message.");
  * emailLogger.error("This is an email error message.");
  * ```
  */
-const emailLogger = new Logger({
-  logDir: EMAIL_LOG_DIR,
-  fileName: LOG_FILE_NAME,
-  maxSize: LOG_MAX_SIZE,
-  level: LOG_LEVEL,
+export const emailLogger = new Logger({
+  logDir: EMAIL_LOG_DIR as string | undefined,
+  fileName: LOG_FILE_NAME as string | undefined,
+  maxSize: LOG_MAX_SIZE as string | undefined,
+  level: LOG_LEVEL as string | undefined,
 });
-
-module.exports = { logger, emailLogger };

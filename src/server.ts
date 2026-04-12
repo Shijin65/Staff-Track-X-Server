@@ -10,6 +10,8 @@ import { FRONTEND_URL, BACKEND_URL, FRONTEND_URL_DEV } from "./config/envConfig"
 import apiHelmet from "./middleware/apiHelmetMiddleware";
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
+import metaRoutes from "./routes/metaRoutes";
+import eventRoutes from "./routes/eventRoutes";
 import { logger } from "./config/loggerConfig";
 
 const app = express();
@@ -47,6 +49,8 @@ app.get("/", (req: Request, res: Response) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/meta", metaRoutes);
+app.use("/api/events", eventRoutes);
 
 server.listen(port, () => {
   console.log(`Server is listening on http://localhost:${port}`);

@@ -1,8 +1,15 @@
-const winston = require("winston");
-const { parseSizeToBytes } = require("../helpers");
-require("winston-daily-rotate-file");
-const fs = require("fs");
-const path = require("path");
+import winston from "winston";
+import { parseSizeToBytes } from "../helpers";
+import "winston-daily-rotate-file";
+import fs from "fs";
+import path from "path";
+
+export interface LoggerOptions {
+  logDir?: string;
+  fileName?: string;
+  maxSize?: string;
+  level?: string;
+}
 
 /**
  * Logger class to handle application-wide logging with file rotation and structured configuration.
@@ -10,23 +17,18 @@ const path = require("path");
  * Provides easy-to-use methods for logging at various levels: info, warn, error, and debug.
  */
 class Logger {
-  #logger; // Private field for the winston logger instance
+  private logger: winston.Logger;
 
   /**
    * Constructs a new logger instance with configurable options.
    *
-   * @param {Object} options - Logger configuration options.
-   * @param {string} [options.logDir] - Directory where log files are stored.
-   * @param {string} [options.fileName] - Base name for log files.
-   * @param {string} [options.maxSize] - Maximum file size before creating a new file (e.g., "5mb", "10kb").
-   * @param {string} [options.level] - Minimum log level to output (e.g., "info", "warn", "error").
-   *
-   * @throws {Error} Throws an error if essential configuration is missing or invalid.
+   * @param options - Logger configuration options.
+   * @throws Throws an error if essential configuration is missing or invalid.
    */
-  constructor(options = {}) {
+  constructor(options: LoggerOptions = {}) {
     const {
       logDir = "",
-      fileName = "nexus-log",
+      fileName = "StaffManagement-log",
       maxSize = "5mb",
       level = "info",
     } = options;
@@ -50,18 +52,20 @@ class Logger {
 
     const consoleTransport = new winston.transports.Console({
       format: winston.format.combine(
-        winston.format.printf(({ level, message }) => {
+        winston.format.printf((info) => {
+          const { level, message } = info;
           const safeMessage = message || "No message provided.";
           return `[${level.toUpperCase()}]: ${safeMessage}`;
         })
       ),
     });
 
-    this.#logger = winston.createLogger({
+    this.logger = winston.createLogger({
       level,
       format: winston.format.combine(
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-        winston.format.printf(({ timestamp, level, message }) => {
+        winston.format.printf((info) => {
+          const { timestamp, level, message } = info;
           const safeMessage = message || "No message provided.";
           return `${timestamp} [${level.toUpperCase()}]: ${safeMessage}`;
         })
@@ -73,69 +77,54 @@ class Logger {
   /**
    * Logs a message at the specified level.
    *
-   * @param {string} level - Log level (e.g., "info", "warn", "error", "debug").
-   * @param {string} message - Message to log.
-   *
-   * @example
-   * logger.log("info", "Application started successfully.");
+   * @param level - Log level (e.g., "info", "warn", "error", "debug").
+   * @param message - Message to log.
    */
-  log(level, message) {
+  log(level: string, message: string): void {
     if (!level || typeof message !== "string") {
-      this.#logger.warn(
+      this.logger.warn(
         `Invalid log parameters: level=${level}, message=${message}`
       );
       return;
     }
-    this.#logger.log({ level, message });
+    this.logger.log({ level, message });
   }
 
   /**
    * Logs an informational message.
    *
-   * @param {string} message - Message to log.
-   *
-   * @example
-   * logger.info("User logged in.");
+   * @param message - Message to log.
    */
-  info(message) {
+  info(message: string): void {
     this.log("info", message);
   }
 
   /**
    * Logs a warning message.
    *
-   * @param {string} message - Message to log.
-   *
-   * @example
-   * logger.warn("Disk space is running low.");
+   * @param message - Message to log.
    */
-  warn(message) {
+  warn(message: string): void {
     this.log("warn", message);
   }
 
   /**
    * Logs an error message.
    *
-   * @param {string} message - Message to log.
-   *
-   * @example
-   * logger.error("Failed to connect to the database.");
+   * @param message - Message to log.
    */
-  error(message) {
+  error(message: string): void {
     this.log("error", message);
   }
 
   /**
    * Logs a debug message.
    *
-   * @param {string} message - Message to log.
-   *
-   * @example
-   * logger.debug("Debugging user authentication flow.");
+   * @param message - Message to log.
    */
-  debug(message) {
+  debug(message: string): void {
     this.log("debug", message);
   }
 }
 
-module.exports = Logger;
+export default Logger;

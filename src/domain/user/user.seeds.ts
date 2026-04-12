@@ -1,3 +1,4 @@
+import { SUPER_ADMIN_UID } from "../../constants/valueConstant";
 import { asyncHandler } from "../../middleware";
 import { sequelize } from "../../models";
 import welcomeEmail from "../../templates/email_templates/welcomeMail";
@@ -5,7 +6,12 @@ import welcomeEmail from "../../templates/email_templates/welcomeMail";
 const { Op } = require("sequelize");
 const jwt = require("jsonwebtoken");
 const db = require("../../models");
-const { ApiResponse } = require("../../utils");
+const {
+  ApiResponse,
+  getUserRole,
+  getPermissionsByRoleId,
+} = require("../../utils");
+const PERMISSIONS = require("../../constants/Permissions").default;
 const {
   PASSWORD_SETUP_LINK_EXPIRY,
   PASSWORD_SETUP_SECRET_KEY,
@@ -13,9 +19,7 @@ const {
 const resetPasswordEmail = require("../../templates/email_templates/resetPasswordMail");
 
 const User = db.users;
-const Address = db.user_address;
-const AssignedUserRoles = db.assigned_user_roles;
-const ProductionAccesses = db.production_accesses;
+const Uniform = db.user_uniforms;
 class UserController {
   // GET ALL USER              ////////////////////////////////////////
 
@@ -39,7 +43,7 @@ class UserController {
 
     // Base WHERE
     const whereClause: any = {
-      // userId: { [Op.ne]: SUPER_ADMIN_UID },
+      userId: { [Op.ne]: SUPER_ADMIN_UID },
     };
 
     // Search
@@ -94,155 +98,128 @@ class UserController {
     );
   });
 
-  // // GET USER BY ID   ////////////////////////////////////////
-  // static getById = asyncHandler(async (req, res) => {
-  //   try {
-  //     const id = req.params.id;
-  //     const user = await User.findOne({
-  //       where: { userId: id },
-  //       include: [
-  //         {
-  //           model: AssignedUserRoles,
-  //           as: "assignedUserRoles",
-  //           attributes: ["role_id"],
-  //         },
-  //         {
-  //           model: ProductionAccesses,
-  //           as: "productionAccesses",
-  //           attributes: ["prod_id"],
-  //         },
-  //       ],
-  //     });
+  // GET USER BY ID   ////////////////////////////////////////
+  static getById = asyncHandler(async (req, res) => {
+    try {
+      const id = req.params.id;
+      const user = await User.findOne({
+        where: { userId: id },
+        include: [{ model: Uniform, as: "uniform" }],
+      });
 
-  //     if (!user) {
-  //       res.status(404).json(new ApiResponse(404, "User not found."));
-  //     }
-  //     const productions =
-  //       user
-  //         .get({ plain: true })
-  //         .productionAccesses?.map(
-  //           (ProductionAccess) => ProductionAccess.prod_id
-  //         ) || [];
-  //     const roles =
-  //       user
-  //         .get({ plain: true })
-  //         .assignedUserRoles?.map((assignedRole) => assignedRole.role_id) || [];
+      if (!user) {
+        return res.status(404).json(new ApiResponse(404, "User not found."));
+      }
+      const userRoleDetails = getUserRole(user.roleId);
+      const role = userRoleDetails
+        ? { roleId: userRoleDetails.roleId, title: userRoleDetails.name }
+        : null;
 
-  //     const response = {
-  //       email: user.email,
-  //       userId: id,
-  //       firstName: user.firstName,
-  //       lastName: user.lastName,
-  //       phone: user.phone,
-  //       gender: user.gender,
-  //       isSuperAdmin: user.isSuperAdmin,
-  //       isActive: user.isActive,
-  //       roles: roles,
-  //       productions,
-  //     };
-  //     return res.json(new ApiResponse(200, "Success.", response));
-  //   } catch (error) {
-  //     console.log(error);
-  //     res.status(400).json(new ApiResponse(400, "Failed to get User."));
-  //   }
-  // });
+      const allPermissions = Object.values(PERMISSIONS);
+      const userPermissions = getPermissionsByRoleId(
+        user.roleId,
+        user.isSuperAdmin
+      );
 
-  // //// GET USER PERMISSION BY ID            ////////////////////////////////////////
-  // static getPermissionById = asyncHandler(async (req, res) => {
-  //   try {
-  //     const id = req.params.id;
-  //     const user = await User.findOne({
-  //       where: { userId: id },
-  //       include: [
-  //         {
-  //           model: AssignedUserRoles,
-  //           as: "assignedUserRoles",
-  //           attributes: ["role_id"],
-  //           include: [
-  //             {
-  //               model: UserRoles,
-  //               as: "roles",
-  //               attributes: ["roleId", "title"],
-  //               raw: true,
-  //             },
-  //           ],
-  //         },
-  //         {
-  //           model: ProductionAccesses,
-  //           as: "productionAccesses",
-  //           attributes: ["prod_id"],
-  //           include: [
-  //             {
-  //               model: Production,
-  //               as: "production",
-  //               attributes: ["prodId", "productionName"],
-  //               raw: true,
-  //             },
-  //           ],
-  //         },
-  //       ],
-  //     });
+      const updatedApis = allPermissions.map((permission) => ({
+        name: permission,
+        is_access: userPermissions.includes(permission),
+      }));
 
-  //     if (!user) {
-  //       res.status(404).json(new ApiResponse(404, "User not found."));
-  //     }
+      const response = {
+        email: user.email,
+        userId: id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        mobileNumber: user.mobileNumber,
+        gender: user.gender,
+        isSuperAdmin: user.isSuperAdmin,
+        isActive: user.isActive,
+        rating: user.rating,
+        profileUpdated: user.profileUpdated,
+        experience: user.experience,
+        verification: user.verification,
+        emergencyContact: user.emergencyContact,
+        role,
+        permissions: updatedApis,
+        address: user.address,
+        state: user.state,
+        district: user.district,
+        city: user.city,
+        bloodGroup: user.bloodGroup,
+        dateOfBirth: user.dateOfBirth,
+        uniform: user.uniform
+      };
+      return res.json(new ApiResponse(200, "Success.", response));
+    } catch (error) {
+      console.log(error);
+      res.status(400).json(new ApiResponse(400, "Failed to get User."));
+    }
+  });
 
-  //     const productions =
-  //       user
-  //         .get({ plain: true })
-  //         .productionAccesses?.map(
-  //           (ProductionAccess) => ProductionAccess.production
-  //         ) || [];
+  //// GET USER PERMISSION BY ID            ////////////////////////////////////////
+  static getPermissionById = asyncHandler(async (req, res) => {
+    try {
+      const id = req.params.id;
+      const user = await User.findOne({
+        where: { userId: id },
+        include: [{ model: Uniform, as: "uniform" }],
+      });
 
-  //     const roles =
-  //       user
-  //         .get({ plain: true })
-  //         .assignedUserRoles?.map((assignedRole) => assignedRole.roles) || [];
+      if (!user) {
+        return res.status(404).json(new ApiResponse(404, "User not found."));
+      }
 
-  //     const apiPermissionData = await PermissionName.findAll({
-  //       raw: true,
-  //       attributes: ["name", "category", "apiId"],
-  //     });
+      const userRoleDetails = getUserRole(user.roleId);
+      const roles = userRoleDetails
+        ? [{ roleId: userRoleDetails.roleId, title: userRoleDetails.name }]
+        : [];
 
-  //     const roleIds = roles.map((role) => role.roleId);
-  //     const userRolePermission = await RolePermission.findAll({
-  //       where: { role_id: { [Op.in]: roleIds } },
-  //       attributes: ["apiId"],
-  //       raw: true,
-  //     }).then((permissions) => permissions.map(({ apiId }) => apiId));
+      const allPermissions = Object.values(PERMISSIONS);
+      const userPermissions = getPermissionsByRoleId(
+        user.roleId,
+        user.isSuperAdmin
+      );
 
-  //     const updatedApis = apiPermissionData.map((api) => ({
-  //       ...api,
-  //       is_access: userRolePermission.includes(api.apiId),
-  //     }));
+      const updatedApis = allPermissions.map((permission) => ({
+        name: permission,
+        is_access: userPermissions.includes(permission),
+      }));
 
-  //     const response = {
-  //       userId: id,
-  //       firstName: user.firstName,
-  //       lastName: user.lastName,
-  //       phone: user.phone,
-  //       email: user.email,
-  //       gender: user.gender,
-  //       isSuperAdmin: user.isSuperAdmin,
-  //       isActive: user.isActive,
-  //       roles,
-  //       permissions: updatedApis,
-  //       productions,
-  //     };
-  //     return res.json(new ApiResponse(200, "Success.", response));
-  //   } catch (error) {
-  //     console.log(error);
-  //     res.status(400).json(new ApiResponse(400, "Failed to get User."));
-  //   }
-  // });
+      const response = {
+        userId: id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        mobileNumber: user.mobileNumber,
+        email: user.email,
+        gender: user.gender,
+        isSuperAdmin: user.isSuperAdmin,
+        isActive: user.isActive,
+        roles,
+        permissions: updatedApis,
+        address: user.address,
+        state: user.state,
+        district: user.district,
+        city: user.city,
+        bloodGroup: user.bloodGroup,
+        dateOfBirth: user.dateOfBirth,
+        uniform: user.uniform
+      };
+      return res.json(new ApiResponse(200, "Success.", response));
+    } catch (error) {
+      console.log(error);
+      res.status(400).json(new ApiResponse(400, "Failed to get User."));
+    }
+  });
 
   // CREATE USER               ////////////////////////////////////////
+
   static create = asyncHandler(async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
       const {
-        roleId,
+        role,
         firstName,
         lastName,
         mobileNumber,
@@ -258,12 +235,17 @@ class UserController {
         state,
         district,
         city,
-        bloodGroup
+        bloodGroup,
+        dateOfBirth,
+        whiteShirt,
+        blackPant,
+        executiveBlackShoe,
+        grooming,
       } = req.body;
 
       const newUserDetails = await User.create(
         {
-          roleId,
+          roleId: role,
           firstName,
           lastName,
           mobileNumber,
@@ -275,6 +257,12 @@ class UserController {
           experience,
           verification,
           emergencyContact,
+          address: address || null,
+          state: state || null,
+          district: district || null,
+          city: city || null,
+          bloodGroup: bloodGroup || null,
+          dateOfBirth: dateOfBirth || null,
         },
         { transaction: t }
       );
@@ -282,14 +270,13 @@ class UserController {
       const newUser = newUserDetails.get({ plain: true });
 
       if (newUser) {
-        await Address.create(
+        await Uniform.create(
           {
             userId: newUser.userId,
-            address: address || null,
-            state: state || null,
-            district: district || null,
-            city: city || null,
-            bloodGroup: bloodGroup || null,
+            whiteShirt: whiteShirt || false,
+            blackPant: blackPant || false,
+            executiveBlackShoe: executiveBlackShoe || false,
+            grooming: grooming || false,
           },
           { transaction: t }
         );
@@ -303,6 +290,7 @@ class UserController {
             expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
           }
         );
+        console.log("new user :", newUser, "jwtToken :", jwtToken, "PASSWORD_SETUP_SECRET_KEY :", PASSWORD_SETUP_SECRET_KEY, "PASSWORD_SETUP_LINK_EXPIRY :", PASSWORD_SETUP_LINK_EXPIRY)
         await welcomeEmail(newUser, jwtToken);
         newUserDetails.isMailSend = true;
         await newUserDetails.save({ transaction: t });
@@ -345,11 +333,16 @@ class UserController {
         district,
         city,
         bloodGroup,
-        roleId
+        dateOfBirth,
+        whiteShirt,
+        blackPant,
+        executiveBlackShoe,
+        grooming,
+        role
       } = req.body;
       const user = await User.findByPk(id);
       if (user) {
-        user.roleId = roleId;
+        user.roleId = role;
         user.firstName = firstName;
         user.lastName = lastName;
         user.mobileNumber = mobileNumber;
@@ -359,41 +352,44 @@ class UserController {
         user.experience = experience;
         user.verification = verification;
         user.emergencyContact = emergencyContact;
+        user.address = address || null;
+        user.state = state || null;
+        user.district = district || null;
+        user.city = city || null;
+        user.bloodGroup = bloodGroup || null;
+        user.dateOfBirth = dateOfBirth || null;
         if (profileUpdated !== undefined) {
           user.profileUpdated = profileUpdated;
         }
-        user.updatedAt = Date.now();
-        user.tokenInvalidDateTime = new Date();
+
         const updatedUser = await user.save();
 
-        let addressRecord = await Address.findOne({ where: { userId: id } });
-        if (addressRecord) {
-          addressRecord.address = address || null;
-          addressRecord.state = state || null;
-          addressRecord.district = district || null;
-          addressRecord.city = city || null;
-          addressRecord.bloodGroup = bloodGroup || null;
-          await addressRecord.save();
+        let uniformRecord = await Uniform.findOne({ where: { userId: id } });
+        if (uniformRecord) {
+          uniformRecord.whiteShirt = whiteShirt || false;
+          uniformRecord.blackPant = blackPant || false;
+          uniformRecord.executiveBlackShoe = executiveBlackShoe || false;
+          uniformRecord.grooming = grooming || false;
+          await uniformRecord.save();
         } else {
-          await Address.create({
+          await Uniform.create({
             userId: id,
-            address: address || null,
-            state: state || null,
-            district: district || null,
-            city: city || null,
-            bloodGroup: bloodGroup || null,
+            whiteShirt: whiteShirt || false,
+            blackPant: blackPant || false,
+            executiveBlackShoe: executiveBlackShoe || false,
+            grooming: grooming || false,
           });
         }
 
         if (!user?.isMailSend && isActive) {
           const jwtToken = await jwt.sign(
-            { userId: updatedUser.dataValues.userId, linkType: "join" },
+            { userId: updatedUser.userId, linkType: "join" },
             PASSWORD_SETUP_SECRET_KEY,
             {
               expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
             }
           );
-          // await welcomeEmail(updatedUser.dataValues, jwtToken);
+          // await welcomeEmail(updatedUser, jwtToken);
           updatedUser.isMailSend = true;
           await updatedUser.save();
         }
@@ -503,7 +499,7 @@ class UserController {
         userId: id,
         firstName: user.firstName,
         lastName: user.lastName,
-        phone: user.phone,
+        mobileNumber: user.mobileNumber,
         gender: user.gender,
       };
 
@@ -518,13 +514,13 @@ class UserController {
   static updateUserProfile = asyncHandler(async (req, res) => {
     try {
       const id = (req as any).user.userId;
-      const { firstName, lastName, phone, gender } = req.body;
+      const { firstName, lastName, mobileNumber, gender } = req.body;
 
       const user = await User.findByPk(id);
       if (user) {
         user.firstName = firstName;
         user.lastName = lastName;
-        user.phone = phone;
+        user.mobileNumber = mobileNumber;
         user.gender = gender;
         user.tokenInvalidDateTime = new Date();
 

@@ -5,7 +5,7 @@ const resetPasswordEmail = (user, password, jwtToken) => {
   const mailOptions = {
     from: process.env.SMTP_USER,
     to: user.email,
-    subject: "Password Reset Request - Nexus",
+    subject: "Password Reset Request - StaffManagement",
     html: `
 <html>
         <head>
@@ -34,7 +34,7 @@ const resetPasswordEmail = (user, password, jwtToken) => {
                       <p style="font-size:14px; color: #717171; text-align: justify; line-height: 1.5;">
                         Dear ${user.firstName} ${user.lastName},
                         <br /><br />
-                        We received a request to reset the password for your account on the Nexus platform.
+                        We received a request to reset the password for your account on the StaffManagement platform.
                         <br /><br />
                         To reset your password, please click the link below to access the password reset page:
                         <br /><br />
@@ -61,7 +61,7 @@ const resetPasswordEmail = (user, password, jwtToken) => {
                             Thank you,
                           </p>
                           <h1 style="margin:0;font-size:16px;line-height:16px;font-family:Arial,sans-serif;">
-                            <span style="color:#799431;">Nexus Team</span>
+                            <span style="color:#799431;">StaffManagement Team</span>
                           </h1> <br />
                             <p style="font-size:.8rem; color: #515151; line-height: 1.5; background-color:#f4e6b7; padding:10px; text-align:center;">If you did not request a password reset, please disregard this email. Your account remains secure, and no further action is required.</p>
                         </td>

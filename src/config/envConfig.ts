@@ -1,5 +1,8 @@
+import dotenv from "dotenv";
+import path from "path";
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
- export const NODE_ENV = process.env.NODE_ENV
+export const NODE_ENV = process.env.NODE_ENV
  export const PORT = process.env.PORT
  export const FRONTEND_URL = process.env.FRONTEND_URL
  export const BACKEND_URL = process.env.BACKEND_URL

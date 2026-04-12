@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import Auth from "../domain/general/authentication";
+import Auth from "../domain/auth/authentication";
 import UserController from "../domain/user/user.seeds";
 
 const router = Router();

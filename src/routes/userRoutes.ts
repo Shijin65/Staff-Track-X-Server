@@ -30,12 +30,12 @@ router.route("/:id").put(
 );
 
 // // GET USER BY ID
-// router
-//   .route("/:id")
-//   .get(
-//     [protected, validateSchema(userSchema.getById), accessControl()],
-//     UserController.getById,
-//   )
+router
+  .route("/:id")
+  .get(
+    // [protected, validateSchema(userSchema.getById), accessControl()],
+    UserController.getById,
+  )
 //   // UPDATE USER
 //   .put(
 //     [protected, validateSchema(userSchema.update), accessControl()],
@@ -48,12 +48,14 @@ router.route("/:id").put(
 //   );
 
 // // MULTIPLE DELETE
-// router
-//   .route("/multiple-delete")
-//   .post(
-//     [protected, validateSchema(userSchema.multipleDelete), accessControl()],
-//     UserController.deleteMany,
-//   );
+router
+  .route("/multiple-delete")
+  .post(
+    [protectRoute, 
+    // validateSchema(userSchema.multipleDelete), accessControl()
+    ],
+    UserController.deleteMany,
+  );
 
 // //CHECK EMAIL
 // router
@@ -71,13 +73,13 @@ router.route("/:id").put(
 //     UserController.getPermissionById,
 //   );
 
-// // SET NEW PASSWORD
-// router
-//   .route("/new-password/:id")
-//   .post(
-//     [validateSchema(userSchema.setNewPassword)],
-//     UserController.setNewPassword,
-//   );
+// SET NEW PASSWORD
+router
+  .route("/new-password/:id")
+  .post(
+    // [validateSchema(userSchema.setNewPassword)],
+    UserController.setNewPassword,
+  );
 
 // // RESET PASSWORD
 // router

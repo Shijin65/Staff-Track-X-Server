@@ -47,6 +47,10 @@ module.exports = {
                     gender: {
                         type: Sequelize.STRING,
                     },
+                    date_of_birth: {
+                        type: Sequelize.DATEONLY,
+                        allowNull: true,
+                    },
                     rating: {
                         type: Sequelize.FLOAT,
                     },
@@ -83,40 +87,6 @@ module.exports = {
                     },
                     token_invalid_date_time: {
                         type: Sequelize.DATE,
-                    },
-                    created_at: {
-                        type: Sequelize.DATE,
-                        allowNull: false,
-                        defaultValue: Sequelize.NOW,
-                    },
-                    updated_at: {
-                        type: Sequelize.DATE,
-                        allowNull: false,
-                        defaultValue: Sequelize.NOW,
-                    },
-                },
-                { transaction },
-            );
-
-            // Create addresses table
-            await queryInterface.createTable(
-                "user_address",
-                {
-                    address_id: {
-                        type: Sequelize.UUID,
-                        defaultValue: Sequelize.UUIDV4,
-                        primaryKey: true,
-                        allowNull: false,
-                    },
-                    user_id: {
-                        type: Sequelize.UUID,
-                        allowNull: false,
-                        references: {
-                            model: "users",
-                            key: "user_id",
-                        },
-                        onUpdate: "CASCADE",
-                        onDelete: "CASCADE",
                     },
                     address: {
                         type: Sequelize.TEXT,
@@ -180,7 +150,6 @@ module.exports = {
     async down(queryInterface) {
         const transaction = await queryInterface.sequelize.transaction();
         try {
-            await queryInterface.dropTable("user_address", { transaction });
             await queryInterface.dropTable("users", { transaction });
             await transaction.commit();
         } catch (error) {

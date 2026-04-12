@@ -111,6 +111,32 @@ const Users = (sequelize, DataTypes) => {
         field: "is_mail_send",
       },
 
+      address: {
+        type: DataTypes.TEXT,
+      },
+
+      state: {
+        type: DataTypes.STRING,
+      },
+
+      district: {
+        type: DataTypes.STRING,
+      },
+
+      city: {
+        type: DataTypes.STRING,
+      },
+
+      bloodGroup: {
+        type: DataTypes.STRING,
+        field: "blood_group",
+      },
+
+      dateOfBirth: {
+        type: DataTypes.DATEONLY,
+        field: "date_of_birth",
+      },
+
       createdAt: {
         allowNull: false,
         type: DataTypes.DATE,
@@ -144,15 +170,14 @@ const Users = (sequelize, DataTypes) => {
     }
   });
 
-  // Password verification
   User.prototype.verifyPassword = async function (password) {
     return await bcrypt.compare(password, this.password);
   };
 
   User.associate = (models) => {
-    User.hasOne(models.user_address, {
+    User.hasOne(models.user_uniforms, {
       foreignKey: "user_id",
-      as: "address",
+      as: "uniform",
     });
   };
 
