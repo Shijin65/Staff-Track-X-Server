@@ -1,22 +1,19 @@
 import { SUPER_ADMIN_UID } from "../../constants/valueConstant";
 import { asyncHandler } from "../../middleware";
 import { sequelize } from "../../models";
+import resetPasswordEmail from "../../templates/email_templates/resetPasswordMail";
 import welcomeEmail from "../../templates/email_templates/welcomeMail";
+import { ApiResponse, getPermissionsByRoleId, getUserRole } from "../../utils";
 
 const { Op } = require("sequelize");
 const jwt = require("jsonwebtoken");
 const db = require("../../models");
-const {
-  ApiResponse,
-  getUserRole,
-  getPermissionsByRoleId,
-} = require("../../utils");
+
 const PERMISSIONS = require("../../constants/Permissions").default;
 const {
   PASSWORD_SETUP_LINK_EXPIRY,
   PASSWORD_SETUP_SECRET_KEY,
 } = require("../../config/envConfig");
-const resetPasswordEmail = require("../../templates/email_templates/resetPasswordMail");
 
 const User = db.users;
 const Uniform = db.user_uniforms;
@@ -85,7 +82,7 @@ class UserController {
       lastName: user.lastName,
       email: user.email,
       isActive: user.isActive,
-      isSuperAdmin: user.isSuperAdmin,
+      verification: user.verification,
       updatedAt: user.updatedAt,
     }));
 
@@ -342,6 +339,9 @@ class UserController {
       } = req.body;
       const user = await User.findByPk(id);
       if (user) {
+        if (user.roleId !== role || user.isActive !== isActive) {
+          user.tokenInvalidDateTime = new Date();
+        }
         user.roleId = role;
         user.firstName = firstName;
         user.lastName = lastName;
@@ -568,12 +568,13 @@ class UserController {
       user.isEmailLinkUsed = true;
       user.temporaryPassword = null;
       await user.save();
-      res
+      return res
         .status(200)
         .json(new ApiResponse(200, "Password updated successfully."));
     } catch (error) {
+      console.log(error);
       if (error.name === "TokenExpiredError") {
-        res
+        return res
           .status(410)
           .json(
             new ApiResponse(
@@ -581,11 +582,10 @@ class UserController {
               "This link has expired. Please contact the administrator to resend it."
             )
           );
+      } else {
+        return res.status(400).json(new ApiResponse(400, "Failed to set password."))
       }
-      console.error(error);
-      res.status(400).json(new ApiResponse(400, "Failed to set password."));
     }
-    return;
   });
 
   // RESET PASSWORD TRIGGER // RESET PASSWORD MAIL SENDER ////////////////////////////////////////

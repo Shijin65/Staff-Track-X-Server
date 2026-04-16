@@ -23,6 +23,5 @@ class ApiResponse<T = any> {
   }
 }
 
-export { ApiResponse };
 export default ApiResponse;
 

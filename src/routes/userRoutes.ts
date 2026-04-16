@@ -82,12 +82,12 @@ router
   );
 
 // // RESET PASSWORD
-// router
-//   .route("/reset-password/:id")
-//   .put(
-//     [validateSchema(userSchema.resetPassword)],
-//     UserController.resetPassword,
-//   );
+router
+  .route("/reset-password/:id")
+  .put(
+    // [validateSchema(userSchema.resetPassword)],
+    UserController.resetPassword,
+  );
 
 // // FORGET PASSWORD
 // router

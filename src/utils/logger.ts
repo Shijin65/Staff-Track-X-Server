@@ -28,7 +28,7 @@ class Logger {
   constructor(options: LoggerOptions = {}) {
     const {
       logDir = "",
-      fileName = "StaffManagement-log",
+      fileName = "CatersHub-log",
       maxSize = "5mb",
       level = "info",
     } = options;

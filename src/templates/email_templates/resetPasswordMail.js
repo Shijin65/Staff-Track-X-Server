@@ -5,77 +5,106 @@ const resetPasswordEmail = (user, password, jwtToken) => {
   const mailOptions = {
     from: process.env.SMTP_USER,
     to: user.email,
-    subject: "Password Reset Request - StaffManagement",
+    subject: "Password Reset Request - Caters Hub",
     html: `
-<html>
+        <html>
         <head>
-          <title>Password Reset Request</title>
-          <style>
-            table, td, div, h1, p {
-              font-family: Arial, sans-serif;
-            }
-          </style>
+          <meta charset="UTF-8" />
+          <title>Change Password</title>
         </head>
-        <body style="margin:0;padding:0;">
-          <table role="presentation" style="width:100%;border-collapse:collapse;border:0;border-spacing:0;background:#ffffff;">
+
+        <body style="margin:0; padding:0; background-color:#f4f7fb;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f7fb; padding:20px 0;">
             <tr>
-              <td align="center" style="padding:0;">
-                <table role="presentation" style="width:602px;border-collapse:collapse;border-spacing:0;text-align:left; background:#f2f2f2; font-size:14px">
+              <td align="center">
+
+                <!-- Card -->
+                <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:10px; overflow:hidden; font-family:Arial, sans-serif; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+
+                  <!-- Header -->
                   <tr>
-                    <td align="center" style="padding:60px 10px 30px 10px; background-color:#93a219; text-transform: uppercase;">
-                      <h1 style="font-size:24px;font-family:Arial,sans-serif;color:#ffffff; text-align:center;">
-                        Password Reset Request
+                    <td align="center" style="background:linear-gradient(135deg, #1e3a8a, #2563eb); padding:40px 20px;">
+                      <h1 style="color:#ffffff; margin:0; font-size:24px;">
+                        Change Your Password 🔐
                       </h1>
-                    </td>
-                  </tr>
-                  <tr><td style="border-bottom:2px solid #c1d42f; padding:2px"></td></tr>
-                  <tr>
-                    <td style="padding:30px;">
-                      <p style="font-size:14px; color: #717171; text-align: justify; line-height: 1.5;">
-                        Dear ${user.firstName} ${user.lastName},
-                        <br /><br />
-                        We received a request to reset the password for your account on the StaffManagement platform.
-                        <br /><br />
-                        To reset your password, please click the link below to access the password reset page:
-                        <br /><br />
-                        <a href="${URL}/auth/${jwtToken}" style="color:#ff7e00; padding:10px; border:1px solid #FF8800; border-radius:4px; font-weight:bold; text-decoration:none; background-color:#f2e8dc">Click here to reset a new password</a>
-                        <br /><br />
-                        For your security, please use the temporary credentials provided below to log in:
-                        <br /><br />
-                        <strong>Email:</strong> ${user.email}
-                        <br />
-                        <strong>Temporary Password:</strong> ${password}
-                        <br /><br />
-                        Once you log in, we highly recommend changing your password immediately for added security.
-                        <br />
-                        
+                      <p style="color:#dbeafe; margin-top:10px; font-size:14px;">
+                        Secure your account access
                       </p>
                     </td>
                   </tr>
+
+                  <!-- Body -->
                   <tr>
-                    <td>
-                      <table role="presentation" style="width:100%;border-collapse:collapse;border:0;border-spacing:0;font-family:Arial,sans-serif;padding-bottom:25px">
-                          <tr>
-                        <td style="padding-left:30px; padding-right:30px; padding-top:0px;">
-                          <p style="font-size:14px;  color: #717171; line-height: 1.5;">
-                            Thank you,
-                          </p>
-                          <h1 style="margin:0;font-size:16px;line-height:16px;font-family:Arial,sans-serif;">
-                            <span style="color:#799431;">StaffManagement Team</span>
-                          </h1> <br />
-                            <p style="font-size:.8rem; color: #515151; line-height: 1.5; background-color:#f4e6b7; padding:10px; text-align:center;">If you did not request a password reset, please disregard this email. Your account remains secure, and no further action is required.</p>
-                        </td>
+                    <td style="padding:30px;">
+                      <p style="font-size:15px; color:#333;">
+                        Hi <strong>${user.firstName} ${user.lastName}</strong>,
+                      </p>
+
+                      <p style="font-size:14px; color:#555; line-height:1.6;">
+                        We received a request to change your password. Click the button below to proceed.
+                      </p>
+
+                      <!-- CTA -->
+                      <table width="100%" cellpadding="0" cellspacing="0" style="margin:25px 0;">
+                        <tr>
+                          <td align="center">
+                            <a href="${URL}/auth/${jwtToken}" 
+                              style="background:#2563eb; color:#ffffff; padding:14px 28px; 
+                              text-decoration:none; border-radius:6px; font-weight:bold; 
+                              display:inline-block; font-size:14px;">
+                              Change Password
+                            </a>
+                          </td>
                         </tr>
                       </table>
+
+                      <!-- Temp Credentials Box -->
+                      <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px; padding:15px; margin:20px 0;">
+                        <tr>
+                          <td style="font-size:13px; color:#333;">
+                            <strong>Temporary Login Details:</strong><br /><br />
+                            Email: ${user.email}<br />
+                            Temporary Password: <strong>${password}</strong>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p style="font-size:13px; color:#777;">
+                        This link will expire soon. For security reasons, please update your password immediately after logging in.
+                      </p>
+
+                      <p style="font-size:13px; color:#777; line-height:1.6;">
+                        If you didn’t request this, you can ignore this email. Your account remains secure.
+                      </p>
                     </td>
                   </tr>
+
+                  <!-- Divider -->
+                  <tr>
+                    <td style="border-top:1px solid #e5e7eb;"></td>
+                  </tr>
+
+                  <!-- Footer -->
+                  <tr>
+                    <td style="padding:20px 30px; text-align:center;">
+                      <p style="margin:0; font-size:13px; color:#555;">
+                        Regards,<br />
+                        <strong style="color:#2563eb;">Caters Hub Team</strong>
+                      </p>
+
+                      <p style="margin-top:15px; font-size:11px; color:#999;">
+                        © ${new Date().getFullYear()} Caters Hub. All rights reserved.
+                      </p>
+                    </td>
+                  </tr>
+
                 </table>
+
               </td>
             </tr>
           </table>
         </body>
-      </html>
-    `,
+        </html>`
   };
 
   transporter.sendMail(mailOptions, (error, info) => {

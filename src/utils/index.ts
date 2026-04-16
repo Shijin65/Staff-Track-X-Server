@@ -1,4 +1,4 @@
-import { ApiResponse } from "./apiResponse";
+import  ApiResponse  from "./apiResponse";
 import generateTokens from "./generateToken";
 import FileUploader from "./fileUploader";
 import { getPermissionsByRoleId, getUserRole } from "./getPermissionsByRoleId";

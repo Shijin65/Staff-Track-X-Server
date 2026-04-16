@@ -4,14 +4,14 @@ const { transporter, emailLogger } = require("../../config");
 const welcomeEmail = (user, jwtToken) => {
       const URL = process.env.FRONTEND_URL;
       const mailOptions = {
-            from: `"Staff Management" <${process.env.SMTP_USER}>`,
+            from: `"Caters Hub" <${process.env.SMTP_USER}>`,
             to: user.email,
-            subject: "Welcome to Staff Management",
+            subject: "Welcome to Caters Hub",
             html: `
                   <html>
                   <head>
                   <meta charset="UTF-8" />
-                  <title>Welcome to Staff Management</title>
+                  <title>Welcome to Caters Hub</title>
                   </head>
 
                   <body style="margin:0; padding:0; background-color:#f4f7fb;">
@@ -24,7 +24,7 @@ const welcomeEmail = (user, jwtToken) => {
                         <tr>
                               <td align="center" style="background:linear-gradient(135deg, #1e3a8a, #2563eb); padding:40px 20px;">
                               <h1 style="color:#ffffff; margin:0; font-size:26px;">
-                              Welcome to Staff Management 🚀
+                              Welcome to Caters Hub 🚀
                               </h1>
                               <p style="color:#ffffff; margin-top:10px; font-size:14px;">
                               Your journey starts here
@@ -39,7 +39,7 @@ const welcomeEmail = (user, jwtToken) => {
                               </p>
 
                               <p style="font-size:14px; color:#555; line-height:1.6;">
-                              Your account has been successfully created on <strong>Staff Management</strong>.
+                              Your account has been successfully created on <strong>Caters Hub</strong>.
                               To get started, please set your password using the button below.
                               </p>
 
@@ -74,11 +74,11 @@ const welcomeEmail = (user, jwtToken) => {
                               <td style="padding:20px 30px; text-align:center;">
                               <p style="margin:0; font-size:13px; color:#555;">
                               Thanks,<br />
-                              <strong style="color:#2563eb;">Team Staff Management</strong>
+                              <strong style="color:#2563eb;">Team Caters Hub</strong>
                               </p>
 
                               <p style="margin-top:15px; font-size:11px; color:#999;">
-                              © ${new Date().getFullYear()} Staff Management. All rights reserved.
+                              © ${new Date().getFullYear()} Caters Hub. All rights reserved.
                               </p>
                               </td>
                         </tr>
