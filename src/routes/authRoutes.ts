@@ -17,10 +17,13 @@ router.get("/me", Auth.checkAuthenticated);
 // LOGOUT
 router.post("/logout", Auth.logout);
 
+// FORGOT PASSWORD
+router.post("/forgot-password", Auth.forgotPassword);
+
 // CHECK TEMPORARY PASSWORD
-router.post(
-  "/check-temp-password/:id",
-  UserController.checkSecretKey
+router.post("/check-temp-password/:id", UserController.checkSecretKey
 );
+
+
 
 export default router;

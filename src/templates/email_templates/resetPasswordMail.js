@@ -3,7 +3,7 @@ const { transporter, emailLogger } = require("../../config");
 const resetPasswordEmail = (user, password, jwtToken) => {
   const URL = process.env.FRONTEND_URL;
   const mailOptions = {
-    from: process.env.SMTP_USER,
+    from: `"Caters Hub" <${process.env.SMTP_USER}>`,
     to: user.email,
     subject: "Password Reset Request - Caters Hub",
     html: `

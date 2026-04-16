@@ -10,12 +10,15 @@ import {
 } from "../../utils";
 
 import {
+  PASSWORD_SETUP_LINK_EXPIRY,
+  PASSWORD_SETUP_SECRET_KEY,
   REFRESH_SECRET_KEY,
   REQUIRE_SECURE_COOKIES,
 } from "../../config/envConfig";
 
 import { logger } from "../../config/loggerConfig";
 import { asyncHandler } from "../../middleware";
+import resetPasswordEmail from "../../templates/email_templates/resetPasswordMail";
 
 const User = db.users;
 const UserRoles = db.user_roles;
@@ -290,6 +293,64 @@ class Auth {
       return res.status(400).json(new ApiResponse(400, "Failed to logout."));
     }
   });
+
+  // FORGET PASSWORD TRIGGER // FORGET PASSWORD MAIL SENDER ////////////////////////////////////////
+  static forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+    const { email, tempPassword} = req.body;
+
+    try {
+      const user = await User.findOne({ 
+        where: { 
+          email,
+          isSuperAdmin: false 
+        } 
+      });
+
+      if (!user) {
+        logger.error(`Forget password attempt for non-existent or super admin email: ${email}`);
+        return res.status(404).json(new ApiResponse(404, "User Not Found."));
+      }
+
+      if (!user.isActive) {
+        logger.error(`Forget password attempt for inactive user: ${email}`);
+        return res.status(400).json(
+          new ApiResponse(
+            400,
+            "Your account is inactive. Please contact the administrator."
+          )
+        );
+      }
+
+      user.temporaryPassword = tempPassword;
+      await user.save();
+
+      const jwtToken = jwt.sign(
+        { userId: user.userId, linkType: "passwordReset" },
+        PASSWORD_SETUP_SECRET_KEY as jwt.Secret,
+        {
+          expiresIn: PASSWORD_SETUP_LINK_EXPIRY as any,
+        }
+      );
+
+      await resetPasswordEmail(user.dataValues, tempPassword, jwtToken);
+
+      return res.json(new ApiResponse(200, "A temporary password has been sent to your email."));
+    } catch (error: any) {
+      logger.error(`Error during forget password: ${error.message}`);
+      return res
+        .status(400)
+        .json(
+          new ApiResponse(
+            400,
+            "An error occurred while processing your request. Please try again later."
+          )
+        );
+    }
+  });
+
+  static generateTempPassword = () => {
+    return Math.floor(1000 + Math.random() * 9000).toString();
+  };
 }
 
 export default Auth;
