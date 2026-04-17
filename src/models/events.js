@@ -30,24 +30,30 @@ module.exports = (sequelize, Sequelize) => {
     clientPhone: {
       type: Sequelize.STRING,
     },
-    clientEmail: {
-      type: Sequelize.STRING,
-    },
     address: {
       type: Sequelize.TEXT,
     },
-    city: {
+    district: {
       type: Sequelize.STRING,
-    },
-    pincode: {
+    },  
+    city: {
       type: Sequelize.STRING,
     },
     status: {
       type: Sequelize.STRING,
-      defaultValue: "Pending", // Pending, Confirmed, Completed, Cancelled
+      defaultValue: "Pending",
     },
-    notes: {
+    description: {
       type: Sequelize.TEXT,
+    },
+    locationInstructions: {
+      type: Sequelize.TEXT,
+    },
+    longitude: {
+      type: Sequelize.STRING,
+    },
+    latitude: {
+      type: Sequelize.STRING,
     },
     createdAt: {
       type: Sequelize.DATE,

@@ -19,6 +19,7 @@ import {
 import { logger } from "../../config/loggerConfig";
 import { asyncHandler } from "../../middleware";
 import resetPasswordEmail from "../../templates/email_templates/resetPasswordMail";
+import sendOtpEmail from "../../templates/email_templates/sendOtpMail";
 
 const User = db.users;
 const UserRoles = db.user_roles;
@@ -294,63 +295,85 @@ class Auth {
     }
   });
 
-  // FORGET PASSWORD TRIGGER // FORGET PASSWORD MAIL SENDER ////////////////////////////////////////
-  static forgotPassword = asyncHandler(async (req: Request, res: Response) => {
-    const { email, tempPassword} = req.body;
+  static generateOTP = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
+  };
 
+  // FORGOT PASSWORD
+  static forgotPassword = asyncHandler(async (req: Request, res: Response) => {
     try {
-      const user = await User.findOne({ 
-        where: { 
-          email,
-          isSuperAdmin: false 
-        } 
+      const { email } = req.body;
+
+      const user = await User.findOne({
+        where: { email, isSuperAdmin: false },
       });
 
       if (!user) {
-        logger.error(`Forget password attempt for non-existent or super admin email: ${email}`);
         return res.status(404).json(new ApiResponse(404, "User Not Found."));
       }
 
       if (!user.isActive) {
-        logger.error(`Forget password attempt for inactive user: ${email}`);
         return res.status(400).json(
-          new ApiResponse(
-            400,
-            "Your account is inactive. Please contact the administrator."
-          )
+          new ApiResponse(400, "Account inactive. Contact admin.")
         );
       }
 
-      user.temporaryPassword = tempPassword;
+      const otp = this.generateOTP();
+
+      user.otp = otp;
+      user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
       await user.save();
 
-      const jwtToken = jwt.sign(
-        { userId: user.userId, linkType: "passwordReset" },
-        PASSWORD_SETUP_SECRET_KEY as jwt.Secret,
-        {
-          expiresIn: PASSWORD_SETUP_LINK_EXPIRY as any,
-        }
-      );
+      await sendOtpEmail(user.dataValues, otp);
 
-      await resetPasswordEmail(user.dataValues, tempPassword, jwtToken);
-
-      return res.json(new ApiResponse(200, "A temporary password has been sent to your email."));
+      return res.json(new ApiResponse(200, "OTP sent to your email"));
     } catch (error: any) {
-      logger.error(`Error during forget password: ${error.message}`);
-      return res
-        .status(400)
-        .json(
-          new ApiResponse(
-            400,
-            "An error occurred while processing your request. Please try again later."
-          )
-        );
+      logger.error(`Error during forgot password: ${error.message}`);
+      return res.status(400).json(new ApiResponse(400, "Failed to forgot password."));
     }
   });
 
-  static generateTempPassword = () => {
-    return Math.floor(1000 + Math.random() * 9000).toString();
-  };
+  // CHECK OTP
+  static verifyOtp = asyncHandler(async (req: Request, res: Response) => {
+    console.log("OTP VERIFY")
+    try {
+  const { email, otp } = req.body;
+
+  const user = await User.findOne({ where: { email } });
+
+  if (!user || !user.otp || !user.otpExpiry) {
+    return res.status(400).json(new ApiResponse(400, "Invalid request"));
+  }
+
+  // 🔹 Check expiry
+  if (user.otpExpiry < new Date()) {
+    return res.status(400).json(new ApiResponse(400, "OTP expired"));
+  }
+
+  if (otp !== user.otp) {
+    return res.status(400).json(new ApiResponse(400, "Invalid OTP"));
+  }
+
+  // 🔹 OTP valid → generate reset token
+  const resetToken = jwt.sign(
+    { userId: user.userId, type: "reset" },
+    PASSWORD_SETUP_SECRET_KEY as jwt.Secret,
+    { expiresIn: "15m" }
+  );
+
+  // Clear OTP
+  user.otp = null;
+  user.otpExpiry = null;
+  await user.save();
+
+  return res.json(new ApiResponse(200, "OTP verified", { resetToken }));
+} catch (error: any) {
+  logger.error(`Error during OTP verification: ${error.message}`);
+  return res.status(400).json(new ApiResponse(400, "Failed to verify OTP."));
+}
+});
+
+
 }
 
 export default Auth;

@@ -21,8 +21,10 @@ router.post("/logout", Auth.logout);
 router.post("/forgot-password", Auth.forgotPassword);
 
 // CHECK TEMPORARY PASSWORD
-router.post("/check-temp-password/:id", UserController.checkSecretKey
-);
+router.post("/check-temp-password/:id", UserController.checkSecretKey);
+
+// CHECK OTP
+router.post("/check-otp", Auth.verifyOtp);
 
 
 

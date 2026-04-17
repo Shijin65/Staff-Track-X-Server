@@ -137,6 +137,15 @@ const Users = (sequelize, DataTypes) => {
         field: "date_of_birth",
       },
 
+      otp: {
+        type: DataTypes.STRING,
+      },
+
+      otpExpiry: {
+        type: DataTypes.DATE,
+        field: "otp_expiry",
+      },
+
       createdAt: {
         allowNull: false,
         type: DataTypes.DATE,

@@ -103,6 +103,14 @@ module.exports = {
                     blood_group: {
                         type: Sequelize.STRING,
                     },
+                    otp: {
+                        type: Sequelize.STRING,
+                        allowNull: true,
+                    },
+                    otp_expiry: {
+                        type: Sequelize.DATE,
+                        allowNull: true,
+                    },
                     created_at: {
                         type: Sequelize.DATE,
                         allowNull: false,
