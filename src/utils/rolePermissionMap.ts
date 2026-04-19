@@ -24,8 +24,6 @@ export const ROLES = {
     STAFF: {
         roleId: 1003,
         name: "staff",
-        permissions: [
-            PERMISSIONS.VIEW_EVENT,
-        ],
+        permissions: [],
     },
 };

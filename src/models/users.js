@@ -71,8 +71,9 @@ const Users = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
       },
 
-      verification: {
-        type: DataTypes.STRING,
+      isVerified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
       },
 
       emergencyContact: {
@@ -187,6 +188,14 @@ const Users = (sequelize, DataTypes) => {
     User.hasOne(models.user_uniforms, {
       foreignKey: "user_id",
       as: "uniform",
+    });
+    User.hasOne(models.user_attachments, {
+      foreignKey: "user_id",
+      as: "attachment",
+    });
+    User.hasMany(models.event_requests, {
+      foreignKey: "user_id",
+      as: "eventRequests",
     });
   };
 

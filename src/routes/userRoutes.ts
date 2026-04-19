@@ -1,6 +1,14 @@
 import express from "express";
 import UserController from "../domain/user/user.seeds";
 import protectRoute from "../middleware/authMiddleware";
+import multer from "multer";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 const router = express.Router();
 
@@ -10,17 +18,13 @@ router.get("/", protectRoute, UserController.getAll);
 
 //CREATE USER 
 router.post("/",
-    [protectRoute
-    // , validateSchema(userSchema.create), accessControl()
-    ],
+    [protectRoute, upload.single("profilePic")],
     UserController.create,
 );
 
 //UPDATE USER
 router.route("/:id").put(
-    [protectRoute
-    // , validateSchema(userSchema.update), accessControl()
-    ],
+    [protectRoute, upload.single("profilePic")],
     UserController.updateUser,
 ).delete(
     [protectRoute
@@ -116,12 +120,7 @@ router
 // // GET user/profile/me : GET PROFILE DATA
 // router.route("/profile/me").get([protected], UserController.getProfile);
 
-// // PUT user/profile/me : UPDATE PROFILE DATA
-// router
-//   .route("/profile/me")
-//   .put(
-//     [protected, validateSchema(userSchema.updateProfile)],
-//     UserController.updateUserProfile,
-//   );
+// GET ATTACHMENT
+router.get("/attachment/:id", UserController.getAttachment);
 
 export default router;

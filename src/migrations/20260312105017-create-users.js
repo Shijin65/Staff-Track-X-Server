@@ -70,8 +70,9 @@ module.exports = {
                     experience: {
                         type: Sequelize.STRING,
                     },
-                    verification: {
-                        type: Sequelize.STRING,
+                    isVerified: {
+                        type: Sequelize.BOOLEAN,
+                        defaultValue: false,
                     },
                     emergency_contact: {
                         type: Sequelize.STRING,

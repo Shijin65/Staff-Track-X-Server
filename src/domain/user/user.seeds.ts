@@ -4,6 +4,12 @@ import { sequelize } from "../../models";
 import resetPasswordEmail from "../../templates/email_templates/resetPasswordMail";
 import welcomeEmail from "../../templates/email_templates/welcomeMail";
 import { ApiResponse, getPermissionsByRoleId, getUserRole } from "../../utils";
+import FileUploader from "../../utils/fileUploader";
+import path from "path";
+
+const profileUploader = new FileUploader(
+  path.resolve(__dirname, "../../../uploads/profile_pics")
+);
 
 const { Op } = require("sequelize");
 const jwt = require("jsonwebtoken");
@@ -17,6 +23,8 @@ const {
 
 const User = db.users;
 const Uniform = db.user_uniforms;
+const Attachment = db.user_attachments;
+
 class UserController {
   // GET ALL USER              ////////////////////////////////////////
 
@@ -32,8 +40,13 @@ class UserController {
       IsActive,
     } = req.query;
 
-    const page = parseInt(Page as string);
-    const limit = parseInt(Limit as string);
+    const page = parseInt(Page as string) || 1;
+    let limit = parseInt(Limit as string) || 10;
+    
+    // Set a maximum limit to prevent heavy queries
+    const MAX_LIMIT = 100;
+    if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+
     const offset = (page - 1) * limit;
     const sortDirection = SortByAscending === "true" ? "ASC" : "DESC";
 
@@ -68,8 +81,10 @@ class UserController {
     }
 
     // Query
-    const { count, rows } = await User.findAndCountAll({
+    const count = await User.count({ where: whereClause });
+    const rows = await User.findAll({
       where: whereClause,
+      include: [{ model: Attachment, as: "attachment" }],
       offset,
       limit,
       order,
@@ -82,8 +97,9 @@ class UserController {
       lastName: user.lastName,
       email: user.email,
       isActive: user.isActive,
-      verification: user.verification,
+      isVerified: user.isVerified,
       updatedAt: user.updatedAt,
+      attachment: user.attachment
     }));
 
     return res.json(
@@ -101,7 +117,10 @@ class UserController {
       const id = req.params.id;
       const user = await User.findOne({
         where: { userId: id },
-        include: [{ model: Uniform, as: "uniform" }],
+        include: [
+          { model: Uniform, as: "uniform" },
+          { model: Attachment, as: "attachment" }
+        ],
       });
 
       if (!user) {
@@ -135,7 +154,7 @@ class UserController {
         rating: user.rating,
         profileUpdated: user.profileUpdated,
         experience: user.experience,
-        verification: user.verification,
+        isVerified: user.isVerified,
         emergencyContact: user.emergencyContact,
         role,
         permissions: updatedApis,
@@ -145,7 +164,8 @@ class UserController {
         city: user.city,
         bloodGroup: user.bloodGroup,
         dateOfBirth: user.dateOfBirth,
-        uniform: user.uniform
+        uniform: user.uniform,
+        attachment: user.attachment
       };
       return res.json(new ApiResponse(200, "Success.", response));
     } catch (error) {
@@ -160,7 +180,10 @@ class UserController {
       const id = req.params.id;
       const user = await User.findOne({
         where: { userId: id },
-        include: [{ model: Uniform, as: "uniform" }],
+        include: [
+          { model: Uniform, as: "uniform" },
+          { model: Attachment, as: "attachment" }
+        ],
       });
 
       if (!user) {
@@ -200,7 +223,8 @@ class UserController {
         city: user.city,
         bloodGroup: user.bloodGroup,
         dateOfBirth: user.dateOfBirth,
-        uniform: user.uniform
+        uniform: user.uniform,
+        attachment: user.attachment
       };
       return res.json(new ApiResponse(200, "Success.", response));
     } catch (error) {
@@ -215,6 +239,14 @@ class UserController {
     const t = await sequelize.transaction();
 
     try {
+      const body = req.body;
+
+      // Helper for parsing form-data strings
+      const parseValue = (val: any) =>
+        val === "null" || val === "undefined" ? null : val;
+      const parseBool = (val: any) =>
+        val === "true" || val === true ? true : val === "false" || val === false ? false : null;
+
       const {
         role,
         firstName,
@@ -226,7 +258,7 @@ class UserController {
         rating,
         profileUpdated,
         experience,
-        verification,
+        isVerified,
         emergencyContact,
         address,
         state,
@@ -238,42 +270,62 @@ class UserController {
         blackPant,
         executiveBlackShoe,
         grooming,
-      } = req.body;
+      } = body;
 
       const newUserDetails = await User.create(
         {
-          roleId: role,
+          roleId: role ? parseInt(role) : null,
           firstName,
           lastName,
           mobileNumber,
           email,
-          isActive,
+          isActive: parseBool(isActive) ?? true,
           gender,
-          rating,
-          profileUpdated,
+          rating: rating ? parseFloat(rating) : null,
+          profileUpdated: parseBool(profileUpdated) ?? false,
           experience,
-          verification,
+          isVerified: parseBool(isVerified) ?? false,
           emergencyContact,
-          address: address || null,
-          state: state || null,
-          district: district || null,
-          city: city || null,
-          bloodGroup: bloodGroup || null,
-          dateOfBirth: dateOfBirth || null,
+          address: parseValue(address),
+          state: parseValue(state),
+          district: parseValue(district),
+          city: parseValue(city),
+          bloodGroup: parseValue(bloodGroup),
+          dateOfBirth: parseValue(dateOfBirth),
         },
         { transaction: t }
       );
 
       const newUser = newUserDetails.get({ plain: true });
 
+      // Handle profile picture upload
+      if (req.file) {
+        const uploadedFile = (await profileUploader.uploadFiles(
+          req.file as any
+        )) as any;
+
+        if (newUser) {
+          await Attachment.create(
+            {
+              userId: newUser.userId,
+              fileName: uploadedFile.originalFileName,
+              picId: uploadedFile.fileId,
+              contentType: uploadedFile.contentType,
+              fileExtension: uploadedFile.fileExtension,
+            },
+            { transaction: t }
+          );
+        }
+      }
+
       if (newUser) {
         await Uniform.create(
           {
             userId: newUser.userId,
-            whiteShirt: whiteShirt || false,
-            blackPant: blackPant || false,
-            executiveBlackShoe: executiveBlackShoe || false,
-            grooming: grooming || false,
+            whiteShirt: parseBool(whiteShirt) ?? false,
+            blackPant: parseBool(blackPant) ?? false,
+            executiveBlackShoe: parseBool(executiveBlackShoe) ?? false,
+            grooming: parseBool(grooming) ?? false,
           },
           { transaction: t }
         );
@@ -287,7 +339,6 @@ class UserController {
             expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
           }
         );
-        console.log("new user :", newUser, "jwtToken :", jwtToken, "PASSWORD_SETUP_SECRET_KEY :", PASSWORD_SETUP_SECRET_KEY, "PASSWORD_SETUP_LINK_EXPIRY :", PASSWORD_SETUP_LINK_EXPIRY)
         await welcomeEmail(newUser, jwtToken);
         newUserDetails.isMailSend = true;
         await newUserDetails.save({ transaction: t });
@@ -297,13 +348,10 @@ class UserController {
 
       return res
         .status(201)
-        .json(new ApiResponse(201, "User created successfully.", req.body));
-
+        .json(new ApiResponse(201, "User created successfully.", newUserDetails));
     } catch (error) {
       await t.rollback();
-
       console.error("Error creating user:", error);
-
       return res
         .status(400)
         .json(new ApiResponse(400, error.message || "Failed to create User."));
@@ -314,6 +362,14 @@ class UserController {
   static updateUser = asyncHandler(async (req, res) => {
     try {
       const id = req.params.id;
+      const body = req.body;
+
+      // Helper for parsing form-data strings
+      const parseValue = (val: any) =>
+        val === "null" || val === "undefined" ? null : val;
+      const parseBool = (val: any) =>
+        val === "true" || val === true ? true : val === "false" || val === false ? false : null;
+
       const {
         firstName,
         lastName,
@@ -323,7 +379,7 @@ class UserController {
         rating,
         profileUpdated,
         experience,
-        verification,
+        isVerified,
         emergencyContact,
         address,
         state,
@@ -335,53 +391,92 @@ class UserController {
         blackPant,
         executiveBlackShoe,
         grooming,
-        role
-      } = req.body;
+        role,
+      } = body;
+
       const user = await User.findByPk(id);
       if (user) {
-        if (user.roleId !== role || user.isActive !== isActive) {
+        const parsedIsActive = parseBool(isActive) ?? user.isActive;
+        const parsedRoleId = role ? parseInt(role) : user.roleId;
+
+        if (user.roleId !== parsedRoleId || user.isActive !== parsedIsActive) {
           user.tokenInvalidDateTime = new Date();
         }
-        user.roleId = role;
+
+        // Handle profile picture upload
+        if (req.file) {
+          const oldAttachment = await Attachment.findOne({ where: { userId: id } });
+          if (oldAttachment) {
+            try {
+              const diskFileName = `${oldAttachment.picId}.${oldAttachment.fileExtension}`;
+              await profileUploader.removeFile(diskFileName);
+            } catch (e) {
+              console.error("Failed to remove old profile pic:", e);
+            }
+          }
+
+          const uploadedFile = (await profileUploader.uploadFiles(
+            req.file as any
+          )) as any;
+
+          const attachmentData = {
+            fileName: uploadedFile.originalFileName,
+            picId: uploadedFile.fileId,
+            contentType: uploadedFile.contentType,
+            fileExtension: uploadedFile.fileExtension,
+          };
+
+          if (oldAttachment) {
+            await oldAttachment.update(attachmentData);
+          } else {
+            await Attachment.create({
+              userId: id,
+              ...attachmentData,
+            });
+          }
+        }
+
+        user.roleId = parsedRoleId;
         user.firstName = firstName;
         user.lastName = lastName;
         user.mobileNumber = mobileNumber;
-        user.isActive = isActive;
+        user.isActive = parsedIsActive;
         user.gender = gender;
-        user.rating = rating;
+        user.rating = rating ? parseFloat(rating) : user.rating;
         user.experience = experience;
-        user.verification = verification;
+        user.isVerified = isVerified;
         user.emergencyContact = emergencyContact;
-        user.address = address || null;
-        user.state = state || null;
-        user.district = district || null;
-        user.city = city || null;
-        user.bloodGroup = bloodGroup || null;
-        user.dateOfBirth = dateOfBirth || null;
+        user.address = parseValue(address);
+        user.state = parseValue(state);
+        user.district = parseValue(district);
+        user.city = parseValue(city);
+        user.bloodGroup = parseValue(bloodGroup);
+        user.dateOfBirth = parseValue(dateOfBirth);
+
         if (profileUpdated !== undefined) {
-          user.profileUpdated = profileUpdated;
+          user.profileUpdated = parseBool(profileUpdated) ?? user.profileUpdated;
         }
 
         const updatedUser = await user.save();
 
         let uniformRecord = await Uniform.findOne({ where: { userId: id } });
+        const uniformData = {
+          whiteShirt: parseBool(whiteShirt) ?? false,
+          blackPant: parseBool(blackPant) ?? false,
+          executiveBlackShoe: parseBool(executiveBlackShoe) ?? false,
+          grooming: parseBool(grooming) ?? false,
+        };
+
         if (uniformRecord) {
-          uniformRecord.whiteShirt = whiteShirt || false;
-          uniformRecord.blackPant = blackPant || false;
-          uniformRecord.executiveBlackShoe = executiveBlackShoe || false;
-          uniformRecord.grooming = grooming || false;
-          await uniformRecord.save();
+          await uniformRecord.update(uniformData);
         } else {
           await Uniform.create({
             userId: id,
-            whiteShirt: whiteShirt || false,
-            blackPant: blackPant || false,
-            executiveBlackShoe: executiveBlackShoe || false,
-            grooming: grooming || false,
+            ...uniformData,
           });
         }
 
-        if (!user?.isMailSend && isActive) {
+        if (!user?.isMailSend && parsedIsActive) {
           const jwtToken = await jwt.sign(
             { userId: updatedUser.userId, linkType: "join" },
             PASSWORD_SETUP_SECRET_KEY,
@@ -389,10 +484,11 @@ class UserController {
               expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
             }
           );
-          // await welcomeEmail(updatedUser, jwtToken);
+          await welcomeEmail(updatedUser, jwtToken);
           updatedUser.isMailSend = true;
           await updatedUser.save();
         }
+
         res.json(
           new ApiResponse(
             200,
@@ -404,7 +500,7 @@ class UserController {
         res.status(400).json(new ApiResponse(400, "User not found."));
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       res.status(400).json(new ApiResponse(400, "Failed to update User."));
     }
   });
@@ -735,6 +831,27 @@ class UserController {
       }
     } catch (error) {
       res.status(400).json(new ApiResponse(400, "Failed to compare password."));
+    }
+  });
+
+  // GET USER ATTACHMENT       ////////////////////////////////////////
+  static getAttachment = asyncHandler(async (req, res) => {
+    try {
+      const { id } = req.params;
+      const attachment = await Attachment.findOne({ where: { picId: id } });
+
+      if (!attachment) {
+        return res.status(404).json(new ApiResponse(404, "Attachment not found."));
+      }
+
+      const diskFileName = `${attachment.picId}.${attachment.fileExtension}`;
+      const filePath = await profileUploader.fetchFile(diskFileName);
+      
+      res.setHeader("Content-Type", attachment.contentType || "application/octet-stream");
+      return res.sendFile(filePath);
+    } catch (error) {
+      console.error("Error fetching attachment:", error);
+      res.status(400).json(new ApiResponse(400, "Failed to get attachment."));
     }
   });
 

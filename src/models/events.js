@@ -42,14 +42,23 @@ const Events = (sequelize, DataTypes) => {
       clientPhone: {
         type: DataTypes.STRING,
         field: "client_phone",
-      },
-      address: {
+      }, 
+      city: {
         type: DataTypes.STRING,
-      },
+      }, 
       district: {
         type: DataTypes.STRING,
       },
-      city: {
+      pincode: {
+        type: DataTypes.STRING,
+      },
+      state: {
+        type: DataTypes.STRING,
+      },
+      country: {
+        type: DataTypes.STRING,
+      },
+      address: {
         type: DataTypes.STRING,
       },
       status: {
@@ -90,6 +99,10 @@ const Events = (sequelize, DataTypes) => {
     Event.hasMany(models.event_staff_requirements, {
       foreignKey: "event_id",
       as: "staffRequirements",
+    });
+    Event.hasMany(models.event_requests, {
+      foreignKey: "event_id",
+      as: "eventRequests",
     });
   };
 

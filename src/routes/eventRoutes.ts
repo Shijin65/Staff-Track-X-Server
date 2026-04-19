@@ -1,5 +1,5 @@
 import { Router } from "express";
-import EventController from "../domain/event/event";
+import EventController from "../domain/event/event.seeds";
 import protectRoute from "../middleware/authMiddleware";
 
 const router = Router();

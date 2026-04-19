@@ -42,6 +42,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(apiHelmet);
 app.use(cookieParser());
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.get("/", (req: Request, res: Response) => {
   res.send("App is running...");
