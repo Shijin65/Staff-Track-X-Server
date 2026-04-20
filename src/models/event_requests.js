@@ -21,6 +21,11 @@ const EventRequests = (sequelize, DataTypes) => {
         allowNull: false,
         field: "event_id",
       },
+      roleId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: "role_id",
+      },
       status: {
         type: DataTypes.STRING,
         defaultValue: "pending",

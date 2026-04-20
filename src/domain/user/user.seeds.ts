@@ -400,8 +400,16 @@ class UserController {
 
       const user = await User.findByPk(id);
       if (user) {
-        const parsedIsActive = parseBool(isActive) ?? user.isActive;
-        const parsedRoleId = role ? parseInt(role) : user.roleId;
+        const requesterId = (req as any).user?.userId;
+        const requesterRoleDetail = getUserRole((req as any).user?.roleId);
+        const isRequesterAdmin = requesterRoleDetail?.name === "admin" || requesterRoleDetail?.name === "super_admin";
+
+        // Restriction: Non-admins cannot change roles or isActive status.
+        // Self-editing users (even admins) cannot change their own role/status via this endpoint to prevent accidental locks.
+        const canChangeSensitiveFields = isRequesterAdmin && (requesterId !== id);
+
+        const parsedIsActive = canChangeSensitiveFields ? (parseBool(isActive) ?? user.isActive) : user.isActive;
+        const parsedRoleId = (role && canChangeSensitiveFields) ? parseInt(role) : user.roleId;
 
         if (user.roleId !== parsedRoleId || user.isActive !== parsedIsActive) {
           user.tokenInvalidDateTime = new Date();

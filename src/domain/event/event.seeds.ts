@@ -56,6 +56,7 @@ class EventController {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         whereClause.eventDate = { [Op.gte]: today };
+        whereClause.status = { [Op.ne]: "Cancelled" };
 
         const userId = (req as any).user?.userId;
         if (userId) {
@@ -134,6 +135,75 @@ class EventController {
     if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
     await event.destroy();
     return res.json(new ApiResponse(200, "Event deleted successfully."));
+  });
+
+  // APPLY FOR EVENT
+  static apply = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { id: eventId } = req.params;
+      const { roleId } = req.body;
+      const userId = (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json(new ApiResponse(401, "User not authenticated."));
+      }
+
+      // Check if event exists
+      const event = await Event.findByPk(eventId);
+      if (!event) {
+        return res.status(404).json(new ApiResponse(404, "Event not found."));
+      }
+
+      // Check if already applied
+      const existingRequest = await EventRequest.findOne({
+        where: { eventId, userId }
+      });
+
+      if (existingRequest) {
+        return res.status(400).json(new ApiResponse(400, "You have already applied for this event."));
+      }
+
+      const request = await EventRequest.create({
+        eventId,
+        userId,
+        roleId: roleId || null,
+        status: "pending",
+        appliedAt: new Date(),
+      });
+
+      return res.status(201).json(new ApiResponse(201, "Application submitted successfully.", request));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to submit application.", error));
+    }
+  });
+
+  // GET MY REQUESTS
+  static getMyRequests = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json(new ApiResponse(401, "User not authenticated."));
+      }
+
+      const requests = await EventRequest.findAll({
+        where: { userId },
+        include: [
+          {
+            model: Event,
+            as: "event",
+            attributes: ["eventId", "title", "eventDate", "eventVenue", "reportingTime", "startTime", "eventType", "city", "district", "status"],
+          },
+        ],
+        order: [["appliedAt", "DESC"]],
+      });
+
+      return res.json(new ApiResponse(200, "My requests fetched successfully.", requests));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch my requests.", error));
+    }
   });
 }
 

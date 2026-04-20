@@ -76,7 +76,6 @@ class Auth {
       }
 
       const userRole = getUserRole(user.roleId);
-
       const sessionUser = {
         userId: user.userId,
         roleId: userRole.roleId,
