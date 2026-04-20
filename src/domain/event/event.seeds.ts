@@ -45,46 +45,39 @@ class EventController {
         whereClause.title = { [Op.iLike]: `%${SearchQuery}%` };
       }
 
+      const includeClause: any[] = [
+        {
+          model: EventStaffRequirements,
+          as: "staffRequirements",
+        },
+      ];
+
       if (isUpcoming === "true") {
-        const userId = (req as any).user?.userId;
-        if (userId) {
-          const requestedEvents = await EventRequest.findAll({
-            where: { userId },
-            attributes: ["eventId"],
-          });
-          const requestedEventIds = requestedEvents.map((req: any) => req.eventId);
-
-          if (requestedEventIds.length > 0) {
-            whereClause.eventId = {
-              [Op.notIn]: requestedEventIds,
-            };
-          }
-        }
-
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        whereClause.eventDate = {
-          ...whereClause.eventDate,
-          [Op.gte]: today,
-        };
-      }
+        whereClause.eventDate = { [Op.gte]: today };
 
-      const count = await Event.count({ where: whereClause });
-      const rows = await Event.findAll({
+        const userId = (req as any).user?.userId;
+        if (userId) {
+          includeClause.push({
+            model: EventRequest,
+            as: "eventRequests",
+            required: false,
+            attributes: [],
+            where: { userId },
+          });
+          whereClause["$eventRequests.request_id$"] = { [Op.is]: null };
+        }
+      }
+      
+      const { count, rows } = await Event.findAndCountAll({
         where: whereClause,
         limit,
         offset,
         order: [["eventDate", "DESC"]],
-        include: [
-          {
-            model: EventStaffRequirements,
-            as: "staffRequirements",
-          },
-          {
-            model: EventRequest,
-            as: "eventRequests",
-          },
-        ],
+        include: includeClause,
+        distinct: true,
+        subQuery: false,
       });
 
       return res.json(

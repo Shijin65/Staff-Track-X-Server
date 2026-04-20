@@ -42,10 +42,10 @@ const Events = (sequelize, DataTypes) => {
       clientPhone: {
         type: DataTypes.STRING,
         field: "client_phone",
-      }, 
+      },
       city: {
         type: DataTypes.STRING,
-      }, 
+      },
       district: {
         type: DataTypes.STRING,
       },

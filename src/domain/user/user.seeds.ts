@@ -30,7 +30,7 @@ class UserController {
 
   static getAll = asyncHandler(async (req, res) => {
 
-
+    try {
     const {
       SortBy = "updatedAt",
       SortByAscending = "false",
@@ -109,6 +109,10 @@ class UserController {
         itemCount: data.length,
       })
     );
+  } catch (error) {
+    console.log(error);
+    res.status(400).json(new ApiResponse(400, "Failed to get Users."));
+  }
   });
 
   // GET USER BY ID   ////////////////////////////////////////
