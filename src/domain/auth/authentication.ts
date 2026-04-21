@@ -115,7 +115,7 @@ class Auth {
           isSuperAdmin: user.isSuperAdmin,
           isActive: user.isActive,
         },
-        availableAccess: userRole.permissions
+        availableAccess: getPermissionsByRoleId(user.roleId, user.isSuperAdmin)
       };
 
       return res.status(200).json(new ApiResponse(200, "Success.", responseData));
@@ -193,11 +193,10 @@ class Auth {
         maxAge: 30 * 24 * 60 * 60 * 1000,
       });
 
-      const permissions = await getPermissionsByRoleId(
+      const permissions = getPermissionsByRoleId(
         userRole.roleId,
         user.isSuperAdmin
       );
-
       const responseData = {
         user: {
           userId: user.userId,
@@ -336,41 +335,41 @@ class Auth {
   static verifyOtp = asyncHandler(async (req: Request, res: Response) => {
     console.log("OTP VERIFY")
     try {
-  const { email, otp } = req.body;
+      const { email, otp } = req.body;
 
-  const user = await User.findOne({ where: { email } });
+      const user = await User.findOne({ where: { email } });
 
-  if (!user || !user.otp || !user.otpExpiry) {
-    return res.status(400).json(new ApiResponse(400, "Invalid request"));
-  }
+      if (!user || !user.otp || !user.otpExpiry) {
+        return res.status(400).json(new ApiResponse(400, "Invalid request"));
+      }
 
-  // 🔹 Check expiry
-  if (user.otpExpiry < new Date()) {
-    return res.status(400).json(new ApiResponse(400, "OTP expired"));
-  }
+      // 🔹 Check expiry
+      if (user.otpExpiry < new Date()) {
+        return res.status(400).json(new ApiResponse(400, "OTP expired"));
+      }
 
-  if (otp !== user.otp) {
-    return res.status(400).json(new ApiResponse(400, "Invalid OTP"));
-  }
+      if (otp !== user.otp) {
+        return res.status(400).json(new ApiResponse(400, "Invalid OTP"));
+      }
 
-  // 🔹 OTP valid → generate reset token
-  const resetToken = jwt.sign(
-    { userId: user.userId, type: "reset" },
-    PASSWORD_SETUP_SECRET_KEY as jwt.Secret,
-    { expiresIn: "15m" }
-  );
+      // 🔹 OTP valid → generate reset token
+      const resetToken = jwt.sign(
+        { userId: user.userId, type: "reset" },
+        PASSWORD_SETUP_SECRET_KEY as jwt.Secret,
+        { expiresIn: "15m" }
+      );
 
-  // Clear OTP
-  user.otp = null;
-  user.otpExpiry = null;
-  await user.save();
+      // Clear OTP
+      user.otp = null;
+      user.otpExpiry = null;
+      await user.save();
 
-  return res.json(new ApiResponse(200, "OTP verified", { resetToken }));
-} catch (error: any) {
-  logger.error(`Error during OTP verification: ${error.message}`);
-  return res.status(400).json(new ApiResponse(400, "Failed to verify OTP."));
-}
-});
+      return res.json(new ApiResponse(200, "OTP verified", { resetToken }));
+    } catch (error: any) {
+      logger.error(`Error during OTP verification: ${error.message}`);
+      return res.status(400).json(new ApiResponse(400, "Failed to verify OTP."));
+    }
+  });
 
 
 }

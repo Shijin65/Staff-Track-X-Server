@@ -11,6 +11,7 @@ const PERMISSIONS = {
   DELETE_EVENT: "DeleteEvent",
   MARK_ATTENDANCE: "MarkAttendance",
   VIEW_ATTENDANCE: "ViewAttendance",
+  VIEW_CLIENT_INFO: "ViewClientInfo",
 };
 
 export default PERMISSIONS;

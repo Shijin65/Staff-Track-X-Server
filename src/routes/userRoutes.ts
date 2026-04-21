@@ -101,21 +101,21 @@ router
 //     UserController.forgetPassword,
 //   );
 
-// // POST auth/change-password :CHANGE PASSWORD
-// router
-//   .route("/change-password")
-//   .post(
-//     [protected, validateSchema(userSchema.changePassword)],
-//     UserController.changePassword,
-//   );
+// POST auth/change-password :CHANGE PASSWORD
+router
+  .route("/change-password")
+  .post(
+    [protectRoute],
+    UserController.changePassword,
+  );
 
-// // POST auth/check-password : CHECK PASSWORD
-// router
-//   .route("/check-password")
-//   .post(
-//     [protected, validateSchema(userSchema.checkCurrentPassword)],
-//     UserController.checkCurrentPassword,
-//   );
+// POST auth/check-password : CHECK PASSWORD
+router
+  .route("/check-password")
+  .post(
+    [protectRoute],
+    UserController.checkCurrentPassword,
+  );
 
 // // GET user/profile/me : GET PROFILE DATA
 // router.route("/profile/me").get([protected], UserController.getProfile);

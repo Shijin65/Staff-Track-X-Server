@@ -141,9 +141,9 @@ class UserController {
         user.isSuperAdmin
       );
 
-      const updatedApis = allPermissions.map((permission) => ({
+      const updatedApis = allPermissions.map((permission: any) => ({
         name: permission,
-        is_access: userPermissions.includes(permission),
+        is_access: (userPermissions as any)[permission],
       }));
 
       const response = {
@@ -205,9 +205,9 @@ class UserController {
         user.isSuperAdmin
       );
 
-      const updatedApis = allPermissions.map((permission) => ({
+      const updatedApis = allPermissions.map((permission: any) => ({
         name: permission,
-        is_access: userPermissions.includes(permission),
+        is_access: (userPermissions as any)[permission],
       }));
 
       const response = {
