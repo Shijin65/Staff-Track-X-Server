@@ -5,6 +5,7 @@ const db = require("../../models");
 const Event = db.events;
 const EventStaffRequirements = db.event_staff_requirements;
 const EventRequest = db.event_requests;
+const User = db.users;
 const { Op } = require("sequelize");
 
 class EventController {
@@ -70,7 +71,7 @@ class EventController {
           whereClause["$eventRequests.request_id$"] = { [Op.is]: null };
         }
       }
-      
+
       const { count, rows } = await Event.findAndCountAll({
         where: whereClause,
         limit,
@@ -96,51 +97,87 @@ class EventController {
 
   // GET EVENT BY ID
   static getById = asyncHandler(async (req: Request, res: Response) => {
-    const event = await Event.findByPk(req.params.id, {
-      include: [
-        {
-          model: EventStaffRequirements,
-          as: "staffRequirements",
-        },
-        {
-          model: EventRequest,
-          as: "eventRequests",
-          include: [{ model: db.users, as: "user", attributes: ["userId", "firstName", "lastName", "mobileNumber", "email"] }],
-        },
-      ],
-    });
-    if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
-    return res.json(new ApiResponse(200, "Success.", event));
+    try {
+      const { eventId } = req.params;
+
+      const totalApplications = await EventRequest.count({ where: { eventId } });
+
+      const event = await Event.findByPk(eventId, {
+        include: [
+          {
+            model: EventStaffRequirements,
+            as: "staffRequirements",
+          },
+          {
+            model: EventRequest,
+            as: "eventRequests",
+            limit: 3,
+            order: [["appliedAt", "DESC"]],
+            include: [
+              {
+                model: User,
+                as: "user",
+                attributes: ["userId", "firstName", "lastName", "mobileNumber", "email"],
+              },
+            ],
+          },
+        ],
+      });
+
+      if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
+
+      const responseData = {
+        ...event.get({ plain: true }),
+        totalApplications,
+      };
+
+      return res.json(new ApiResponse(200, "Success.", responseData));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch event.", error));
+    }
   });
 
   // UPDATE EVENT
   static update = asyncHandler(async (req: Request, res: Response) => {
-    const event = await Event.findByPk(req.params.id);
-    if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
+    try {
+      const { eventId } = req.params;
+      const event = await Event.findByPk(eventId);
+      if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
 
-    await event.update(req.body);
+      await event.update(req.body);
 
-    if (req.body.staffRequirements) {
-      await db.event_staff_requirements.destroy({ where: { event_id: event.eventId } });
-      const reqs = req.body.staffRequirements.map((r: any) => ({ ...r, eventId: event.eventId }));
-      await db.event_staff_requirements.bulkCreate(reqs);
+      if (req.body.staffRequirements) {
+        await db.event_staff_requirements.destroy({ where: { event_id: event.eventId } });
+        const reqs = req.body.staffRequirements.map((r: any) => ({ ...r, eventId: event.eventId }));
+        await db.event_staff_requirements.bulkCreate(reqs);
+      }
+
+      return res.json(new ApiResponse(200, "Event updated successfully.", event));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to update event.", error));
     }
-
-    return res.json(new ApiResponse(200, "Event updated successfully.", event));
   });
 
   // DELETE EVENT
   static delete = asyncHandler(async (req: Request, res: Response) => {
-    const event = await Event.findByPk(req.params.id);
-    if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
-    await event.destroy();
-    return res.json(new ApiResponse(200, "Event deleted successfully."));
+    try {
+      const { eventId } = req.params;
+      const event = await Event.findByPk(eventId);
+      if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
+      await event.destroy();
+      return res.json(new ApiResponse(200, "Event deleted successfully."));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to delete event.", error));
+    }
   });
 
   // APPLY FOR EVENT
   static apply = asyncHandler(async (req: Request, res: Response) => {
     try {
-      const { id: eventId } = req.params;
+      const { eventId } = req.params;
       const { roleId } = req.body;
       const userId = (req as any).user?.userId;
 
@@ -203,6 +240,52 @@ class EventController {
     } catch (error) {
       console.log(error);
       return res.status(500).json(new ApiResponse(500, "Failed to fetch my requests.", error));
+    }
+  });
+
+  // UPDATE REQUEST STATUS
+  static updateRequestStatus = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { applicationId } = req.params;
+      const { status } = req.body;
+
+      if (!["pending", "confirmed", "rejected", "cancelled"].includes(status)) {
+        return res.status(400).json(new ApiResponse(400, "Invalid status."));
+      }
+
+      const request = await EventRequest.findByPk(applicationId);
+      if (!request) {
+        return res.status(404).json(new ApiResponse(404, "Request not found."));
+      }
+
+      await request.update({ status });
+
+      return res.json(new ApiResponse(200, `Request ${status} successfully.`, request));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to update request status.", error));
+    }
+  });
+
+  // GET APPLICATIONS BY EVENT
+  static getApplicationsByEvent = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { eventId } = req.params;
+      const applications = await EventRequest.findAll({
+        where: { eventId },
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["userId", "firstName", "lastName", "mobileNumber", "email"],
+          },
+        ],
+        order: [["appliedAt", "DESC"]],
+      });
+      return res.json(new ApiResponse(200, "Event applications fetched successfully.", applications));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch applications.", error));
     }
   });
 }

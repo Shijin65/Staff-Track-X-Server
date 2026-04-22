@@ -4,12 +4,40 @@ import protectRoute from "../middleware/authMiddleware";
 
 const router = Router();
 
+/**
+* EVENT REQUESTS
+**/
+
+// Get all events
 router.get("/", protectRoute, EventController.getAll);
-router.get("/my-requests", protectRoute, EventController.getMyRequests);
+
+// Create event
 router.post("/", protectRoute, EventController.create);
-router.get("/:id", protectRoute, EventController.getById);
-router.post("/:id/request", protectRoute, EventController.apply);
-router.put("/:id", protectRoute, EventController.update);
-router.delete("/:id", protectRoute, EventController.delete);
+
+// Get single event
+router.get("/:eventId", protectRoute, EventController.getById);
+
+// Update event
+router.put("/:eventId", protectRoute, EventController.update);
+
+// Delete event
+router.delete("/:eventId", protectRoute, EventController.delete);
+
+
+/**
+ * EVENT APPLICATIONS
+**/
+
+// Apply to event
+router.post("/:eventId/applications", protectRoute, EventController.apply); 
+
+// My applications
+router.get("/applications/me", protectRoute, EventController.getMyRequests); 
+
+// Approve/Reject
+router.put("/applications/:applicationId", protectRoute, EventController.updateRequestStatus); 
+
+// Get event applications
+router.get("/:eventId/applications", protectRoute, EventController.getApplicationsByEvent);
 
 export default router;
