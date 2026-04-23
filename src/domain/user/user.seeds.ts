@@ -411,10 +411,6 @@ class UserController {
         const parsedIsActive = canChangeSensitiveFields ? (parseBool(isActive) ?? user.isActive) : user.isActive;
         const parsedRoleId = (role && canChangeSensitiveFields) ? parseInt(role) : user.roleId;
 
-        if (user.roleId !== parsedRoleId || user.isActive !== parsedIsActive) {
-          user.tokenInvalidDateTime = new Date();
-        }
-
         // Handle profile picture upload
         if (req.file) {
           const oldAttachment = await Attachment.findOne({ where: { userId: id } });
@@ -464,6 +460,7 @@ class UserController {
         user.city = parseValue(city);
         user.bloodGroup = parseValue(bloodGroup);
         user.dateOfBirth = parseValue(dateOfBirth);
+        user.tokenInvalidDateTime = new Date();
 
         if (profileUpdated !== undefined) {
           user.profileUpdated = parseBool(profileUpdated) ?? user.profileUpdated;
@@ -860,6 +857,7 @@ class UserController {
       const filePath = await profileUploader.fetchFile(diskFileName);
       
       res.setHeader("Content-Type", attachment.contentType || "application/octet-stream");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // Cache for 1 year
       return res.sendFile(filePath);
     } catch (error) {
       console.error("Error fetching attachment:", error);

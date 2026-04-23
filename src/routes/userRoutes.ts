@@ -37,51 +37,22 @@ router.route("/:id").put(
 router
   .route("/:id")
   .get(
-    // [protected, validateSchema(userSchema.getById), accessControl()],
+    [protectRoute],
     UserController.getById,
   )
-//   // UPDATE USER
-//   .put(
-//     [protected, validateSchema(userSchema.update), accessControl()],
-//     UserController.updateUser,
-//   )
-//   //USER DELETE
-//   .delete(
-//     [protected, validateSchema(userSchema.delete), accessControl()],
-//     UserController.deleteOne,
-//   );
 
 // // MULTIPLE DELETE
 router
   .route("/multiple-delete")
   .post(
-    [protectRoute, 
-    // validateSchema(userSchema.multipleDelete), accessControl()
-    ],
+    [protectRoute],
     UserController.deleteMany,
   );
-
-// //CHECK EMAIL
-// router
-//   .route("/check-email")
-//   .post(
-//     [protected, validateSchema(userSchema.checkEmail), accessControl()],
-//     UserController.checkEmail,
-//   );
-
-// // GET USER BY ID WITH PERMISSION
-// router
-//   .route("/permission/:id")
-//   .get(
-//     [protected, validateSchema(userSchema.getById), accessControl()],
-//     UserController.getPermissionById,
-//   );
 
 // SET NEW PASSWORD
 router
   .route("/new-password/:id")
   .post(
-    // [validateSchema(userSchema.setNewPassword)],
     UserController.setNewPassword,
   );
 
@@ -93,13 +64,6 @@ router
     UserController.resetPassword,
   );
 
-// // FORGET PASSWORD
-// router
-//   .route("/forget-password")
-//   .post(
-//     [validateSchema(userSchema.forgetPassword)],
-//     UserController.forgetPassword,
-//   );
 
 // POST auth/change-password :CHANGE PASSWORD
 router

@@ -40,6 +40,7 @@ class Auth {
 
       const user = await User.findOne({
         where: { email },
+        include: [{ model: db.user_attachments, as: "attachment" }],
       });
 
       if (!user) {
@@ -114,6 +115,7 @@ class Auth {
           phone: user.phone,
           isSuperAdmin: user.isSuperAdmin,
           isActive: user.isActive,
+          attachment: user.attachment,
         },
         availableAccess: getPermissionsByRoleId(user.roleId, user.isSuperAdmin)
       };
@@ -156,7 +158,8 @@ class Auth {
       }
 
       const user = await User.findOne({
-        where: { user_id: userId }
+        where: { user_id: userId },
+        include: [{ model: db.user_attachments, as: "attachment" }],
       });
 
       if (!user) {
@@ -206,6 +209,7 @@ class Auth {
           isSuperAdmin: user.isSuperAdmin,
           isActive: user.isActive,
           role: { roleId: userRole.roleId, name: userRole.name },
+          attachment: user.attachment,
         },
         availableAccess: permissions,
       };
@@ -246,6 +250,7 @@ class Auth {
 
       const user = await User.findOne({
         where: { user_id: decoded.user.userId },
+        include: [{ model: db.user_attachments, as: "attachment" }],
       });
 
       if (!user) {
@@ -260,6 +265,7 @@ class Auth {
         phone: user.phone,
         isSuperAdmin: user.isSuperAdmin,
         isActive: user.isActive,
+        attachment: user.attachment,
       };
 
       return res.status(200).json(new ApiResponse(200, "Success.", responseData));

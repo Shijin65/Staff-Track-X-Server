@@ -52,4 +52,9 @@ export const ROLES = {
         name: "housekeeping",
         permissions: [],
     },
+    STAFF: {
+        roleId: 1010,
+        name: "staff",
+        permissions: [],
+    },
 };

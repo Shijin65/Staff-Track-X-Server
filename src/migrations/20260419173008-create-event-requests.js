@@ -3,6 +3,8 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const transaction = await queryInterface.sequelize.transaction();
+    try {
     await queryInterface.createTable("event_requests", {
       request_id: {
         type: Sequelize.UUID,
@@ -52,10 +54,22 @@ module.exports = {
         type: Sequelize.DATE,
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
       },
-    });
+    }, { transaction });
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("event_requests");
+    const transaction = await queryInterface.sequelize.transaction();
+    try {
+      await queryInterface.dropTable("event_requests");
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   },
 };

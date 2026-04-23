@@ -6,6 +6,7 @@ const Event = db.events;
 const EventStaffRequirements = db.event_staff_requirements;
 const EventRequest = db.event_requests;
 const User = db.users;
+const EventUsers = db.event_users;
 const { Op } = require("sequelize");
 
 class EventController {
@@ -117,7 +118,7 @@ class EventController {
               {
                 model: User,
                 as: "user",
-                attributes: ["userId", "firstName", "lastName", "mobileNumber", "email"],
+                attributes: ["userId", "firstName", "lastName", "mobileNumber", "email", "rating"],
               },
             ],
           },
@@ -260,6 +261,26 @@ class EventController {
 
       await request.update({ status });
 
+      if (status === "confirmed") {
+        await EventUsers.findOrCreate({
+          where: {
+            eventId: request.eventId,
+            userId: request.userId,
+          },
+          defaults: {
+            roleId: request.roleId,
+            status: "confirmed",
+          }
+        });
+      } else {
+        await EventUsers.destroy({
+          where: {
+            eventId: request.eventId,
+            userId: request.userId,
+          }
+        });
+      }
+
       return res.json(new ApiResponse(200, `Request ${status} successfully.`, request));
     } catch (error) {
       console.log(error);
@@ -277,7 +298,7 @@ class EventController {
           {
             model: User,
             as: "user",
-            attributes: ["userId", "firstName", "lastName", "mobileNumber", "email"],
+            attributes: ["userId", "firstName", "lastName", "mobileNumber", "email", "rating"],
           },
         ],
         order: [["appliedAt", "DESC"]],

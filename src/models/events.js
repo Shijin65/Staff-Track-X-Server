@@ -104,6 +104,10 @@ const Events = (sequelize, DataTypes) => {
       foreignKey: "event_id",
       as: "eventRequests",
     });
+    Event.hasMany(models.event_users, {
+      foreignKey: "event_id",
+      as: "eventUsers",
+    });
   };
 
   return Event;
