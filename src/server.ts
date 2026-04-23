@@ -12,6 +12,7 @@ import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
 import metaRoutes from "./routes/metaRoutes";
 import eventRoutes from "./routes/eventRoutes";
+import dashboardRoutes from "./routes/dashboardRoutes";
 import { logger } from "./config/loggerConfig";
 
 const app = express();
@@ -52,6 +53,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/meta", metaRoutes);
 app.use("/api/events", eventRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 server.listen(port, () => {
   console.log(`Server is listening on http://localhost:${port}`);

@@ -298,7 +298,7 @@ class EventController {
           {
             model: User,
             as: "user",
-            attributes: ["userId", "firstName", "lastName", "mobileNumber", "email", "rating"],
+            attributes: ["userId", "firstName", "lastName", "mobileNumber", "rating"],
           },
         ],
         order: [["appliedAt", "DESC"]],
