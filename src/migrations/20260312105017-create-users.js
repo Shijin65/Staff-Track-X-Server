@@ -1,6 +1,6 @@
 "use strict";
 
-const { SUPER_ADMIN_ROLE_ID, SUPER_ADMIN_UID } = require('../constants/valueConstant');
+const { SUPER_ADMIN_UID, SUPER_ADMIN_ROLE_ID } = require('../constants/valueConstant');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
@@ -19,13 +19,8 @@ module.exports = {
                         allowNull: false,
                     },
                     role_id: {
-                        type: Sequelize.UUID,
+                        type: Sequelize.INTEGER,
                         allowNull: false,
-                        references: {
-                            model: "user_roles",
-                            key: "role_id",
-                        },
-                        onDelete: "CASCADE",
                     },
                     first_name: {
                         type: Sequelize.STRING,
@@ -34,7 +29,7 @@ module.exports = {
                     last_name: {
                         type: Sequelize.STRING,
                     },
-                    phone: {
+                    mobile_number: {
                         type: Sequelize.STRING,
                     },
                     email: {
@@ -49,11 +44,37 @@ module.exports = {
                         type: Sequelize.STRING,
                         allowNull: true,
                     },
-                    blood_group: {
+                    gender: {
                         type: Sequelize.STRING,
+                    },
+                    date_of_birth: {
+                        type: Sequelize.DATEONLY,
                         allowNull: true,
                     },
-                    gender: {
+                    rating: {
+                        type: Sequelize.FLOAT,
+                    },
+                    is_active: {
+                        type: Sequelize.BOOLEAN,
+                        allowNull: false,
+                        defaultValue: true,
+                    },
+                    is_mail_send: {
+                        type: Sequelize.BOOLEAN,
+                        defaultValue: false,
+                    },
+                    profile_updated: {
+                        type: Sequelize.BOOLEAN,
+                        defaultValue: false,
+                    },
+                    experience: {
+                        type: Sequelize.STRING,
+                    },
+                    isVerified: {
+                        type: Sequelize.BOOLEAN,
+                        defaultValue: false,
+                    },
+                    emergency_contact: {
                         type: Sequelize.STRING,
                     },
                     is_super_admin: {
@@ -61,21 +82,35 @@ module.exports = {
                         allowNull: false,
                         defaultValue: false,
                     },
-                    is_active: {
-                        type: Sequelize.BOOLEAN,
-                        allowNull: false,
-                        defaultValue: true,
-                    },
-                    token_invalid_date_time: {
-                        type: Sequelize.DATE,
-                    },
                     is_email_link_used: {
                         type: Sequelize.BOOLEAN,
                         defaultValue: false,
                     },
-                    is_mail_send: {
-                        type: Sequelize.BOOLEAN,
-                        defaultValue: false,
+                    token_invalid_date_time: {
+                        type: Sequelize.DATE,
+                    },
+                    address: {
+                        type: Sequelize.TEXT,
+                    },
+                    state: {
+                        type: Sequelize.STRING,
+                    },
+                    district: {
+                        type: Sequelize.STRING,
+                    },
+                    city: {
+                        type: Sequelize.STRING,
+                    },
+                    blood_group: {
+                        type: Sequelize.STRING,
+                    },
+                    otp: {
+                        type: Sequelize.STRING,
+                        allowNull: true,
+                    },
+                    otp_expiry: {
+                        type: Sequelize.DATE,
+                        allowNull: true,
                     },
                     created_at: {
                         type: Sequelize.DATE,
@@ -91,21 +126,6 @@ module.exports = {
                 { transaction },
             );
 
-            // Insert Super Admin role
-            await queryInterface.bulkInsert(
-                "user_roles",
-                [
-                    {
-                        role_id: SUPER_ADMIN_ROLE_ID,
-                        title: "SA",
-                        description: "Super Admin",
-                        created_by: SUPER_ADMIN_UID,
-                        created_at: new Date(),
-                        updated_at: new Date(),
-                    },
-                ],
-                { transaction },
-            );
 
             // Insert Super Admin user
             await queryInterface.bulkInsert(
@@ -116,7 +136,7 @@ module.exports = {
                         role_id: SUPER_ADMIN_ROLE_ID,
                         first_name: "Super",
                         last_name: "Admin",
-                        phone: "1234567890",
+                        mobile_number: "1234567890",
                         email: "admin@base.com",
                         password: "T9!vK2#xQ7@Lm5$R",
                         gender: "male",
@@ -137,8 +157,13 @@ module.exports = {
     },
 
     async down(queryInterface) {
-        await queryInterface.bulkDelete("users", { user_id: SUPER_ADMIN_UID });
-        await queryInterface.bulkDelete("user_roles", { role_id: SUPER_ADMIN_ROLE_ID });
-        await queryInterface.dropTable("users");
+        const transaction = await queryInterface.sequelize.transaction();
+        try {
+            await queryInterface.dropTable("users", { transaction });
+            await transaction.commit();
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
     },
 };

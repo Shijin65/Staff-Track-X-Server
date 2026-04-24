@@ -1,26 +1,36 @@
+import { SUPER_ADMIN_UID } from "../../constants/valueConstant";
+import { asyncHandler } from "../../middleware";
+import { sequelize } from "../../models";
+import resetPasswordEmail from "../../templates/email_templates/resetPasswordMail";
+import welcomeEmail from "../../templates/email_templates/welcomeMail";
+import { ApiResponse, getPermissionsByRoleId, getUserRole } from "../../utils";
+import FileUploader from "../../utils/fileUploader";
+import path from "path";
+
+const profileUploader = new FileUploader(
+  path.resolve(__dirname, "../../../uploads/profile_pics")
+);
+
 const { Op } = require("sequelize");
 const jwt = require("jsonwebtoken");
-const { asyncHandler } = require("../../middleware");
 const db = require("../../models");
-const { ApiResponse } = require("../../utils");
-const welcomeEmail = require("../../templates/email_templates/welcomeMail");
+
+const PERMISSIONS = require("../../constants/Permissions").default;
 const {
   PASSWORD_SETUP_LINK_EXPIRY,
   PASSWORD_SETUP_SECRET_KEY,
 } = require("../../config/envConfig");
-const resetPasswordEmail = require("../../templates/email_templates/resetPasswordMail");
 
 const User = db.users;
-const UserRoles = db.user_roles;
-const RolePermission = db.role_permissions;
-const PermissionName = db.api_names;
-const AssignedUserRoles = db.assigned_user_roles;
-const Production = db.productions;
-const ProductionAccesses = db.production_accesses;
+const Uniform = db.user_uniforms;
+const Attachment = db.user_attachments;
+
 class UserController {
   // GET ALL USER              ////////////////////////////////////////
 
   static getAll = asyncHandler(async (req, res) => {
+
+    try {
     const {
       SortBy = "updatedAt",
       SortByAscending = "false",
@@ -30,20 +40,25 @@ class UserController {
       IsActive,
     } = req.query;
 
-    const page = parseInt(Page);
-    const limit = parseInt(Limit);
+    const page = parseInt(Page as string) || 1;
+    let limit = parseInt(Limit as string) || 10;
+    
+    // Set a maximum limit to prevent heavy queries
+    const MAX_LIMIT = 100;
+    if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+
     const offset = (page - 1) * limit;
     const sortDirection = SortByAscending === "true" ? "ASC" : "DESC";
 
 
     // Base WHERE
     const whereClause: any = {
-      // userId: { [Op.ne]: SUPER_ADMIN_UID },
+      userId: { [Op.ne]: SUPER_ADMIN_UID },
     };
 
     // Search
     if (SearchQuery) {
-      const search = `%${SearchQuery.toLowerCase()}%`;
+      const search = `%${(SearchQuery as string).toLowerCase()}%`;
       whereClause[Op.or] = [
         { firstName: { [Op.iLike]: search } },
         { lastName: { [Op.iLike]: search } },
@@ -66,8 +81,10 @@ class UserController {
     }
 
     // Query
-    const { count, rows } = await User.findAndCountAll({
+    const count = await User.count({ where: whereClause });
+    const rows = await User.findAll({
       where: whereClause,
+      include: [{ model: Attachment, as: "attachment" }],
       offset,
       limit,
       order,
@@ -80,8 +97,9 @@ class UserController {
       lastName: user.lastName,
       email: user.email,
       isActive: user.isActive,
-      isSuperAdmin: user.isSuperAdmin,
+      isVerified: user.isVerified,
       updatedAt: user.updatedAt,
+      attachment: user.attachment
     }));
 
     return res.json(
@@ -91,6 +109,10 @@ class UserController {
         itemCount: data.length,
       })
     );
+  } catch (error) {
+    console.log(error);
+    res.status(400).json(new ApiResponse(400, "Failed to get Users."));
+  }
   });
 
   // GET USER BY ID   ////////////////////////////////////////
@@ -100,44 +122,54 @@ class UserController {
       const user = await User.findOne({
         where: { userId: id },
         include: [
-          {
-            model: AssignedUserRoles,
-            as: "assignedUserRoles",
-            attributes: ["role_id"],
-          },
-          {
-            model: ProductionAccesses,
-            as: "productionAccesses",
-            attributes: ["prod_id"],
-          },
+          { model: Uniform, as: "uniform" },
+          { model: Attachment, as: "attachment" }
         ],
       });
 
       if (!user) {
-        res.status(404).json(new ApiResponse(404, "User not found."));
+        return res.status(404).json(new ApiResponse(404, "User not found."));
       }
-      const productions =
-        user
-          .get({ plain: true })
-          .productionAccesses?.map(
-            (ProductionAccess) => ProductionAccess.prod_id
-          ) || [];
-      const roles =
-        user
-          .get({ plain: true })
-          .assignedUserRoles?.map((assignedRole) => assignedRole.role_id) || [];
+      const userRoleDetails = getUserRole(user.roleId);
+      const role = userRoleDetails
+        ? { roleId: userRoleDetails.roleId, title: userRoleDetails.name }
+        : null;
+
+      const allPermissions = Object.values(PERMISSIONS);
+      const userPermissions = getPermissionsByRoleId(
+        user.roleId,
+        user.isSuperAdmin
+      );
+
+      const updatedApis = allPermissions.map((permission: any) => ({
+        name: permission,
+        is_access: (userPermissions as any)[permission],
+      }));
 
       const response = {
         email: user.email,
         userId: id,
         firstName: user.firstName,
         lastName: user.lastName,
-        phone: user.phone,
+        mobileNumber: user.mobileNumber,
         gender: user.gender,
         isSuperAdmin: user.isSuperAdmin,
         isActive: user.isActive,
-        roles: roles,
-        productions,
+        rating: user.rating,
+        profileUpdated: user.profileUpdated,
+        experience: user.experience,
+        isVerified: user.isVerified,
+        emergencyContact: user.emergencyContact,
+        role,
+        permissions: updatedApis,
+        address: user.address,
+        state: user.state,
+        district: user.district,
+        city: user.city,
+        bloodGroup: user.bloodGroup,
+        dateOfBirth: user.dateOfBirth,
+        uniform: user.uniform,
+        attachment: user.attachment
       };
       return res.json(new ApiResponse(200, "Success.", response));
     } catch (error) {
@@ -153,80 +185,50 @@ class UserController {
       const user = await User.findOne({
         where: { userId: id },
         include: [
-          {
-            model: AssignedUserRoles,
-            as: "assignedUserRoles",
-            attributes: ["role_id"],
-            include: [
-              {
-                model: UserRoles,
-                as: "roles",
-                attributes: ["roleId", "title"],
-                raw: true,
-              },
-            ],
-          },
-          {
-            model: ProductionAccesses,
-            as: "productionAccesses",
-            attributes: ["prod_id"],
-            include: [
-              {
-                model: Production,
-                as: "production",
-                attributes: ["prodId", "productionName"],
-                raw: true,
-              },
-            ],
-          },
+          { model: Uniform, as: "uniform" },
+          { model: Attachment, as: "attachment" }
         ],
       });
 
       if (!user) {
-        res.status(404).json(new ApiResponse(404, "User not found."));
+        return res.status(404).json(new ApiResponse(404, "User not found."));
       }
 
-      const productions =
-        user
-          .get({ plain: true })
-          .productionAccesses?.map(
-            (ProductionAccess) => ProductionAccess.production
-          ) || [];
+      const userRoleDetails = getUserRole(user.roleId);
+      const roles = userRoleDetails
+        ? [{ roleId: userRoleDetails.roleId, title: userRoleDetails.name }]
+        : [];
 
-      const roles =
-        user
-          .get({ plain: true })
-          .assignedUserRoles?.map((assignedRole) => assignedRole.roles) || [];
+      const allPermissions = Object.values(PERMISSIONS);
+      const userPermissions = getPermissionsByRoleId(
+        user.roleId,
+        user.isSuperAdmin
+      );
 
-      const apiPermissionData = await PermissionName.findAll({
-        raw: true,
-        attributes: ["name", "category", "apiId"],
-      });
-
-      const roleIds = roles.map((role) => role.roleId);
-      const userRolePermission = await RolePermission.findAll({
-        where: { role_id: { [Op.in]: roleIds } },
-        attributes: ["apiId"],
-        raw: true,
-      }).then((permissions) => permissions.map(({ apiId }) => apiId));
-
-      const updatedApis = apiPermissionData.map((api) => ({
-        ...api,
-        is_access: userRolePermission.includes(api.apiId),
+      const updatedApis = allPermissions.map((permission: any) => ({
+        name: permission,
+        is_access: (userPermissions as any)[permission],
       }));
 
       const response = {
         userId: id,
         firstName: user.firstName,
         lastName: user.lastName,
-        phone: user.phone,
+        mobileNumber: user.mobileNumber,
         email: user.email,
         gender: user.gender,
         isSuperAdmin: user.isSuperAdmin,
         isActive: user.isActive,
         roles,
         permissions: updatedApis,
-        productions,
+        address: user.address,
+        state: user.state,
+        district: user.district,
+        city: user.city,
+        bloodGroup: user.bloodGroup,
+        dateOfBirth: user.dateOfBirth,
+        uniform: user.uniform,
+        attachment: user.attachment
       };
       return res.json(new ApiResponse(200, "Success.", response));
     } catch (error) {
@@ -236,67 +238,127 @@ class UserController {
   });
 
   // CREATE USER               ////////////////////////////////////////
+
   static create = asyncHandler(async (req, res) => {
-    const {
-      firstName,
-      lastName,
-      phone,
-      email,
-      isActive,
-      roleIds,
-      gender,
-      productionIds,
-    } = req.body;
+    const t = await sequelize.transaction();
+
     try {
-      const newUserDetails = await User.create({
+      const body = req.body;
+
+      // Helper for parsing form-data strings
+      const parseValue = (val: any) =>
+        val === "null" || val === "undefined" ? null : val;
+      const parseBool = (val: any) =>
+        val === "true" || val === true ? true : val === "false" || val === false ? false : null;
+
+      const {
+        role,
         firstName,
         lastName,
-        phone,
+        mobileNumber,
         email,
         isActive,
         gender,
-      });
+        rating,
+        profileUpdated,
+        experience,
+        isVerified,
+        emergencyContact,
+        address,
+        state,
+        district,
+        city,
+        bloodGroup,
+        dateOfBirth,
+        whiteShirt,
+        blackPant,
+        executiveBlackShoe,
+        grooming,
+      } = body;
+
+      const newUserDetails = await User.create(
+        {
+          roleId: role ? parseInt(role) : null,
+          firstName,
+          lastName,
+          mobileNumber,
+          email,
+          isActive: parseBool(isActive) ?? true,
+          gender,
+          rating: rating ? parseFloat(rating) : null,
+          profileUpdated: parseBool(profileUpdated) ?? false,
+          experience,
+          isVerified: parseBool(isVerified) ?? false,
+          emergencyContact,
+          address: parseValue(address),
+          state: parseValue(state),
+          district: parseValue(district),
+          city: parseValue(city),
+          bloodGroup: parseValue(bloodGroup),
+          dateOfBirth: parseValue(dateOfBirth),
+        },
+        { transaction: t }
+      );
+
       const newUser = newUserDetails.get({ plain: true });
 
-      if (newUser) {
-        const assignedRoles = roleIds.map((id) => ({
-          roleId: id,
-          userId: newUser.userId,
-        }));
+      // Handle profile picture upload
+      if (req.file) {
+        const uploadedFile = (await profileUploader.uploadFiles(
+          req.file as any
+        )) as any;
 
-        const accessProductions = productionIds.map((id) => ({
-          userId: newUser.userId,
-          productionId: id,
-        }));
-
-        await Promise.all([
-          AssignedUserRoles.bulkCreate(assignedRoles, {
-            returning: true,
-          }),
-          ProductionAccesses.bulkCreate(accessProductions, {
-            returning: true,
-          }),
-        ]);
-
-        if (newUser.isActive) {
-          const jwtToken = await jwt.sign(
-            { userId: newUser.userId, linkType: "join" },
-            PASSWORD_SETUP_SECRET_KEY,
+        if (newUser) {
+          await Attachment.create(
             {
-              expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
-            }
+              userId: newUser.userId,
+              fileName: uploadedFile.originalFileName,
+              picId: uploadedFile.fileId,
+              contentType: uploadedFile.contentType,
+              fileExtension: uploadedFile.fileExtension,
+            },
+            { transaction: t }
           );
-          await welcomeEmail(newUser, jwtToken);
-          newUserDetails.isMailSend = true;
-          await newUserDetails.save();
         }
       }
-      res
+
+      if (newUser) {
+        await Uniform.create(
+          {
+            userId: newUser.userId,
+            whiteShirt: parseBool(whiteShirt) ?? false,
+            blackPant: parseBool(blackPant) ?? false,
+            executiveBlackShoe: parseBool(executiveBlackShoe) ?? false,
+            grooming: parseBool(grooming) ?? false,
+          },
+          { transaction: t }
+        );
+      }
+
+      if (newUser.isActive) {
+        const jwtToken = await jwt.sign(
+          { userId: newUser.userId, linkType: "join" },
+          PASSWORD_SETUP_SECRET_KEY,
+          {
+            expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
+          }
+        );
+        await welcomeEmail(newUser, jwtToken);
+        newUserDetails.isMailSend = true;
+        await newUserDetails.save({ transaction: t });
+      }
+
+      await t.commit();
+
+      return res
         .status(201)
-        .json(new ApiResponse(201, "User created successfully.", req.body));
+        .json(new ApiResponse(201, "User created successfully.", newUserDetails));
     } catch (error) {
+      await t.rollback();
       console.error("Error creating user:", error);
-      res.status(400).json(new ApiResponse(400, "Failed to create User."));
+      return res
+        .status(400)
+        .json(new ApiResponse(400, error.message || "Failed to create User."));
     }
   });
 
@@ -304,79 +366,138 @@ class UserController {
   static updateUser = asyncHandler(async (req, res) => {
     try {
       const id = req.params.id;
+      const body = req.body;
+
+      // Helper for parsing form-data strings
+      const parseValue = (val: any) =>
+        val === "null" || val === "undefined" ? null : val;
+      const parseBool = (val: any) =>
+        val === "true" || val === true ? true : val === "false" || val === false ? false : null;
+
       const {
         firstName,
         lastName,
-        phone,
+        mobileNumber,
         isActive,
         gender,
-        rolesToRemove,
-        rolesToAdd,
-        productionsToAdd,
-        productionsToRemove,
-      } = req.body;
+        rating,
+        profileUpdated,
+        experience,
+        isVerified,
+        emergencyContact,
+        address,
+        state,
+        district,
+        city,
+        bloodGroup,
+        dateOfBirth,
+        whiteShirt,
+        blackPant,
+        executiveBlackShoe,
+        grooming,
+        role,
+      } = body;
+
       const user = await User.findByPk(id);
       if (user) {
-        if (rolesToRemove.length > 0) {
-          await AssignedUserRoles.destroy({
-            where: {
+        const requesterId = (req as any).user?.userId;
+        const requesterRoleDetail = getUserRole((req as any).user?.roleId);
+        const isRequesterAdmin = requesterRoleDetail?.name === "admin" || requesterRoleDetail?.name === "super_admin";
+
+        // Restriction: Non-admins cannot change roles or isActive status.
+        // Self-editing users (even admins) cannot change their own role/status via this endpoint to prevent accidental locks.
+        const canChangeSensitiveFields = isRequesterAdmin && (requesterId !== id);
+
+        const parsedIsActive = canChangeSensitiveFields ? (parseBool(isActive) ?? user.isActive) : user.isActive;
+        const parsedRoleId = (role && canChangeSensitiveFields) ? parseInt(role) : user.roleId;
+
+        // Handle profile picture upload
+        if (req.file) {
+          const oldAttachment = await Attachment.findOne({ where: { userId: id } });
+          if (oldAttachment) {
+            try {
+              const diskFileName = `${oldAttachment.picId}.${oldAttachment.fileExtension}`;
+              await profileUploader.removeFile(diskFileName);
+            } catch (e) {
+              console.error("Failed to remove old profile pic:", e);
+            }
+          }
+
+          const uploadedFile = (await profileUploader.uploadFiles(
+            req.file as any
+          )) as any;
+
+          const attachmentData = {
+            fileName: uploadedFile.originalFileName,
+            picId: uploadedFile.fileId,
+            contentType: uploadedFile.contentType,
+            fileExtension: uploadedFile.fileExtension,
+          };
+
+          if (oldAttachment) {
+            await oldAttachment.update(attachmentData);
+          } else {
+            await Attachment.create({
               userId: id,
-              roleId: rolesToRemove,
-            },
-          });
+              ...attachmentData,
+            });
+          }
         }
 
-        const assignedRoles = rolesToAdd.map((roleId) => ({
-          userId: id,
-          roleId,
-        }));
-
-        if (rolesToAdd.length > 0) {
-          await AssignedUserRoles.bulkCreate(assignedRoles, {
-            returning: true,
-          });
-        }
-
-        if (productionsToRemove.length > 0) {
-          await ProductionAccesses.destroy({
-            where: {
-              userId: id,
-              productionId: productionsToRemove,
-            },
-          });
-        }
-        const newProductions = productionsToAdd.map((production) => ({
-          userId: id,
-          productionId: production,
-        }));
-
-        if (productionsToAdd.length > 0) {
-          await ProductionAccesses.bulkCreate(newProductions, {
-            returning: true,
-          });
-        }
-
+        user.roleId = parsedRoleId;
         user.firstName = firstName;
         user.lastName = lastName;
-        user.phone = phone;
-        user.isActive = isActive;
+        user.mobileNumber = mobileNumber;
+        user.isActive = parsedIsActive;
         user.gender = gender;
-        user.updatedAt = Date.now();
+        user.rating = rating ? parseFloat(rating) : user.rating;
+        user.experience = experience;
+        user.isVerified = isVerified;
+        user.emergencyContact = emergencyContact;
+        user.address = parseValue(address);
+        user.state = parseValue(state);
+        user.district = parseValue(district);
+        user.city = parseValue(city);
+        user.bloodGroup = parseValue(bloodGroup);
+        user.dateOfBirth = parseValue(dateOfBirth);
         user.tokenInvalidDateTime = new Date();
+
+        if (profileUpdated !== undefined) {
+          user.profileUpdated = parseBool(profileUpdated) ?? user.profileUpdated;
+        }
+
         const updatedUser = await user.save();
 
-        if (!user?.isMailSend && isActive) {
+        let uniformRecord = await Uniform.findOne({ where: { userId: id } });
+        const uniformData = {
+          whiteShirt: parseBool(whiteShirt) ?? false,
+          blackPant: parseBool(blackPant) ?? false,
+          executiveBlackShoe: parseBool(executiveBlackShoe) ?? false,
+          grooming: parseBool(grooming) ?? false,
+        };
+
+        if (uniformRecord) {
+          await uniformRecord.update(uniformData);
+        } else {
+          await Uniform.create({
+            userId: id,
+            ...uniformData,
+          });
+        }
+
+        if (!user?.isMailSend && parsedIsActive) {
           const jwtToken = await jwt.sign(
-            { userId: updatedUser.dataValues.userId, linkType: "join" },
+            { userId: updatedUser.userId, linkType: "join" },
             PASSWORD_SETUP_SECRET_KEY,
             {
               expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
             }
           );
-          await welcomeEmail(updatedUser.dataValues, jwtToken);
+          await welcomeEmail(updatedUser, jwtToken);
           updatedUser.isMailSend = true;
           await updatedUser.save();
         }
+
         res.json(
           new ApiResponse(
             200,
@@ -388,16 +509,16 @@ class UserController {
         res.status(400).json(new ApiResponse(400, "User not found."));
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       res.status(400).json(new ApiResponse(400, "Failed to update User."));
     }
   });
 
   // DELETE USER                ////////////////////////////////////////
-  static deleteOne = asyncHandler(async (req, res) => {
+  static deleteUser = asyncHandler(async (req, res) => {
     try {
       const { id } = req.params;
-      const loginUser = req.user.userId;
+      const loginUser = (req as any).user.userId;
 
       const user = await User.findByPk(id);
 
@@ -433,8 +554,7 @@ class UserController {
   static deleteMany = asyncHandler(async (req, res) => {
     try {
       const { ids } = req.body;
-      const loginUser = req.user.userId;
-
+      const loginUser = (req as any).user.userId;
       const users = await User.findAll({
         where: {
           userId: { [Op.in]: ids },
@@ -470,7 +590,7 @@ class UserController {
   //GET USER PROFILE DATA                 ////////////////////////////////////////
   static getProfile = asyncHandler(async (req, res) => {
     try {
-      const id = req.user.userId;
+      const id = (req as any).user.userId;
 
       const user = await User.findOne({
         where: { userId: id },
@@ -484,7 +604,7 @@ class UserController {
         userId: id,
         firstName: user.firstName,
         lastName: user.lastName,
-        phone: user.phone,
+        mobileNumber: user.mobileNumber,
         gender: user.gender,
       };
 
@@ -498,14 +618,14 @@ class UserController {
   // UPDATE USER PROFILE                ////////////////////////////////////////
   static updateUserProfile = asyncHandler(async (req, res) => {
     try {
-      const id = req.user.userId;
-      const { firstName, lastName, phone, gender } = req.body;
+      const id = (req as any).user.userId;
+      const { firstName, lastName, mobileNumber, gender } = req.body;
 
       const user = await User.findByPk(id);
       if (user) {
         user.firstName = firstName;
         user.lastName = lastName;
-        user.phone = phone;
+        user.mobileNumber = mobileNumber;
         user.gender = gender;
         user.tokenInvalidDateTime = new Date();
 
@@ -553,12 +673,13 @@ class UserController {
       user.isEmailLinkUsed = true;
       user.temporaryPassword = null;
       await user.save();
-      res
+      return res
         .status(200)
         .json(new ApiResponse(200, "Password updated successfully."));
     } catch (error) {
+      console.log(error);
       if (error.name === "TokenExpiredError") {
-        res
+        return res
           .status(410)
           .json(
             new ApiResponse(
@@ -566,11 +687,10 @@ class UserController {
               "This link has expired. Please contact the administrator to resend it."
             )
           );
+      } else {
+        return res.status(400).json(new ApiResponse(400, "Failed to set password."))
       }
-      console.error(error);
-      res.status(400).json(new ApiResponse(400, "Failed to set password."));
     }
-    return;
   });
 
   // RESET PASSWORD TRIGGER // RESET PASSWORD MAIL SENDER ////////////////////////////////////////
@@ -653,7 +773,7 @@ class UserController {
 
   // CHANGE PASSWORD TRIGGER    ////////////////////////////////////////
   static changePassword = asyncHandler(async (req, res) => {
-    const id = req.user.userId;
+    const id = (req as any).user.userId;
     const { newPassword } = req.body;
     try {
       const user = await User.findByPk(id);
@@ -723,6 +843,28 @@ class UserController {
     }
   });
 
+  // GET USER ATTACHMENT       ////////////////////////////////////////
+  static getAttachment = asyncHandler(async (req, res) => {
+    try {
+      const { id } = req.params;
+      const attachment = await Attachment.findOne({ where: { picId: id } });
+
+      if (!attachment) {
+        return res.status(404).json(new ApiResponse(404, "Attachment not found."));
+      }
+
+      const diskFileName = `${attachment.picId}.${attachment.fileExtension}`;
+      const filePath = await profileUploader.fetchFile(diskFileName);
+      
+      res.setHeader("Content-Type", attachment.contentType || "application/octet-stream");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // Cache for 1 year
+      return res.sendFile(filePath);
+    } catch (error) {
+      console.error("Error fetching attachment:", error);
+      res.status(400).json(new ApiResponse(400, "Failed to get attachment."));
+    }
+  });
+
   // CHECK EMAIL                ////////////////////////////////////////
   static checkEmail = asyncHandler(async (req, res) => {
     const { email } = req.body;
@@ -737,7 +879,7 @@ class UserController {
   // CHECK CURRENT PASSWORD                ////////////////////////////////////////
   static checkCurrentPassword = asyncHandler(async (req, res) => {
     const { password } = req.body;
-    const id = req.user.userId;
+    const id = (req as any).user.userId;
 
     const user = await User.findByPk(id);
 

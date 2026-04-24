@@ -14,7 +14,7 @@ const Users = (sequelize, DataTypes) => {
       },
 
       roleId: {
-        type: DataTypes.UUID,
+        type: DataTypes.INTEGER,
         allowNull: false,
         field: "role_id",
       },
@@ -30,8 +30,9 @@ const Users = (sequelize, DataTypes) => {
         field: "last_name",
       },
 
-      phone: {
+      mobileNumber: {
         type: DataTypes.STRING,
+        field: "mobile_number",
       },
 
       email: {
@@ -52,13 +53,32 @@ const Users = (sequelize, DataTypes) => {
         field: "temp_password",
       },
 
-      bloodGroup: {
-        type: DataTypes.STRING,
-        field: "blood_group",
-      },
-
       gender: {
         type: DataTypes.STRING,
+      },
+
+      rating: {
+        type: DataTypes.FLOAT,
+      },
+
+      profileUpdated: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        field: "profile_updated",
+      },
+
+      experience: {
+        type: DataTypes.STRING,
+      },
+
+      isVerified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+
+      emergencyContact: {
+        type: DataTypes.STRING,
+        field: "emergency_contact",
       },
 
       isSuperAdmin: {
@@ -92,6 +112,41 @@ const Users = (sequelize, DataTypes) => {
         field: "is_mail_send",
       },
 
+      address: {
+        type: DataTypes.TEXT,
+      },
+
+      state: {
+        type: DataTypes.STRING,
+      },
+
+      district: {
+        type: DataTypes.STRING,
+      },
+
+      city: {
+        type: DataTypes.STRING,
+      },
+
+      bloodGroup: {
+        type: DataTypes.STRING,
+        field: "blood_group",
+      },
+
+      dateOfBirth: {
+        type: DataTypes.DATEONLY,
+        field: "date_of_birth",
+      },
+
+      otp: {
+        type: DataTypes.STRING,
+      },
+
+      otpExpiry: {
+        type: DataTypes.DATE,
+        field: "otp_expiry",
+      },
+
       createdAt: {
         allowNull: false,
         type: DataTypes.DATE,
@@ -106,7 +161,7 @@ const Users = (sequelize, DataTypes) => {
     },
     {
       tableName: "users",
-      timestamps: false,
+      timestamps: true,
     }
   );
 
@@ -125,17 +180,27 @@ const Users = (sequelize, DataTypes) => {
     }
   });
 
-  // Associations
-  User.associate = (models) => {
-    User.belongsTo(models.user_roles, {
-      foreignKey: "role_id",
-      as: "role",
-    });
-  };
-
-  // Password verification
   User.prototype.verifyPassword = async function (password) {
     return await bcrypt.compare(password, this.password);
+  };
+
+  User.associate = (models) => {
+    User.hasOne(models.user_uniforms, {
+      foreignKey: "user_id",
+      as: "uniform",
+    });
+    User.hasOne(models.user_attachments, {
+      foreignKey: "user_id",
+      as: "attachment",
+    });
+    User.hasMany(models.event_requests, {
+      foreignKey: "user_id",
+      as: "eventRequests",
+    });
+    User.hasMany(models.event_users, {
+      foreignKey: "user_id",
+      as: "eventUsers",
+    });
   };
 
   return User;

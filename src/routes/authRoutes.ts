@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import Auth from "../domain/general/authentication";
+import Auth from "../domain/auth/authentication";
 import UserController from "../domain/user/user.seeds";
 
 const router = Router();
@@ -17,10 +17,15 @@ router.get("/me", Auth.checkAuthenticated);
 // LOGOUT
 router.post("/logout", Auth.logout);
 
+// FORGOT PASSWORD
+router.post("/forgot-password", Auth.forgotPassword);
+
 // CHECK TEMPORARY PASSWORD
-router.post(
-  "/check-temp-password/:id",
-  UserController.checkSecretKey
-);
+router.post("/check-temp-password/:id", UserController.checkSecretKey);
+
+// CHECK OTP
+router.post("/check-otp", Auth.verifyOtp);
+
+
 
 export default router;

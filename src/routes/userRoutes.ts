@@ -1,6 +1,14 @@
 import express from "express";
 import UserController from "../domain/user/user.seeds";
 import protectRoute from "../middleware/authMiddleware";
+import multer from "multer";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 const router = express.Router();
 
@@ -8,103 +16,75 @@ const router = express.Router();
 router.get("/", protectRoute, UserController.getAll);
 
 
-//CREATE USER
-// .post(
-//   [validateSchema(userSchema.create), accessControl()],
-//   UserController.create,
-// );
+//CREATE USER 
+router.post("/",
+    [protectRoute, upload.single("profilePic")],
+    UserController.create,
+);
+
+//UPDATE USER
+router.route("/:id").put(
+    [protectRoute, upload.single("profilePic")],
+    UserController.updateUser,
+).delete(
+    [protectRoute
+    // , validateSchema(userSchema.delete), accessControl()
+    ],
+    UserController.deleteUser,
+);
 
 // // GET USER BY ID
-// router
-//   .route("/:id")
-//   .get(
-//     [protected, validateSchema(userSchema.getById), accessControl()],
-//     UserController.getById,
-//   )
-//   // UPDATE USER
-//   .put(
-//     [protected, validateSchema(userSchema.update), accessControl()],
-//     UserController.updateUser,
-//   )
-//   //USER DELETE
-//   .delete(
-//     [protected, validateSchema(userSchema.delete), accessControl()],
-//     UserController.deleteOne,
-//   );
+router
+  .route("/:id")
+  .get(
+    [protectRoute],
+    UserController.getById,
+  )
 
 // // MULTIPLE DELETE
-// router
-//   .route("/multiple-delete")
-//   .post(
-//     [protected, validateSchema(userSchema.multipleDelete), accessControl()],
-//     UserController.deleteMany,
-//   );
+router
+  .route("/multiple-delete")
+  .post(
+    [protectRoute],
+    UserController.deleteMany,
+  );
 
-// //CHECK EMAIL
-// router
-//   .route("/check-email")
-//   .post(
-//     [protected, validateSchema(userSchema.checkEmail), accessControl()],
-//     UserController.checkEmail,
-//   );
-
-// // GET USER BY ID WITH PERMISSION
-// router
-//   .route("/permission/:id")
-//   .get(
-//     [protected, validateSchema(userSchema.getById), accessControl()],
-//     UserController.getPermissionById,
-//   );
-
-// // SET NEW PASSWORD
-// router
-//   .route("/new-password/:id")
-//   .post(
-//     [validateSchema(userSchema.setNewPassword)],
-//     UserController.setNewPassword,
-//   );
+// SET NEW PASSWORD
+router
+  .route("/new-password/:id")
+  .post(
+    UserController.setNewPassword,
+  );
 
 // // RESET PASSWORD
-// router
-//   .route("/reset-password/:id")
-//   .put(
-//     [validateSchema(userSchema.resetPassword)],
-//     UserController.resetPassword,
-//   );
+router
+  .route("/reset-password/:id")
+  .put(
+    // [validateSchema(userSchema.resetPassword)],
+    UserController.resetPassword,
+  );
 
-// // FORGET PASSWORD
-// router
-//   .route("/forget-password")
-//   .post(
-//     [validateSchema(userSchema.forgetPassword)],
-//     UserController.forgetPassword,
-//   );
 
-// // POST auth/change-password :CHANGE PASSWORD
-// router
-//   .route("/change-password")
-//   .post(
-//     [protected, validateSchema(userSchema.changePassword)],
-//     UserController.changePassword,
-//   );
+// POST auth/change-password :CHANGE PASSWORD
+router
+  .route("/change-password")
+  .post(
+    [protectRoute],
+    UserController.changePassword,
+  );
 
-// // POST auth/check-password : CHECK PASSWORD
-// router
-//   .route("/check-password")
-//   .post(
-//     [protected, validateSchema(userSchema.checkCurrentPassword)],
-//     UserController.checkCurrentPassword,
-//   );
+// POST auth/check-password : CHECK PASSWORD
+router
+  .route("/check-password")
+  .post(
+    [protectRoute],
+    UserController.checkCurrentPassword,
+  );
 
 // // GET user/profile/me : GET PROFILE DATA
 // router.route("/profile/me").get([protected], UserController.getProfile);
 
-// // PUT user/profile/me : UPDATE PROFILE DATA
-// router
-//   .route("/profile/me")
-//   .put(
-//     [protected, validateSchema(userSchema.updateProfile)],
-//     UserController.updateUserProfile,
-//   );
+// GET ATTACHMENT
+router.get("/attachment/:id", UserController.getAttachment);
 
 export default router;

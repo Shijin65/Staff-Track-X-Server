@@ -5,6 +5,6 @@
 .env*.local
 .env
 env
-
+/dist
 # Sequelize 
 src/config/config.json

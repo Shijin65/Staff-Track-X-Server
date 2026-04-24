@@ -7,12 +7,12 @@ import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 import { FRONTEND_URL, BACKEND_URL, FRONTEND_URL_DEV } from "./config/envConfig";
-import syncPermissionsWithDB from "./services/syncPermissionsWithDB.service";
-import cachePermissions from "./services/cachePermission.service";
 import apiHelmet from "./middleware/apiHelmetMiddleware";
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
-// import userRoleRoutes from "./routes/userRoleRoutes";
+import metaRoutes from "./routes/metaRoutes";
+import eventRoutes from "./routes/eventRoutes";
+import dashboardRoutes from "./routes/dashboardRoutes";
 import { logger } from "./config/loggerConfig";
 
 const app = express();
@@ -37,20 +37,13 @@ const corsOptions: CorsOptions = {
   optionsSuccessStatus: 200,
 };
 
-(async () => {
-  try {
-    await syncPermissionsWithDB();
-    await cachePermissions.loadPermissions();
-  } catch (error: any) {
-    logger.error(`Failed to sync permissions: ${error.message}`);
-  }
-})();
 
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(apiHelmet);
 app.use(cookieParser());
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.get("/", (req: Request, res: Response) => {
   res.send("App is running...");
@@ -58,7 +51,9 @@ app.get("/", (req: Request, res: Response) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
-// app.use("/api/user-roles", userRoleRoutes);
+app.use("/api/meta", metaRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 server.listen(port, () => {
   console.log(`Server is listening on http://localhost:${port}`);
