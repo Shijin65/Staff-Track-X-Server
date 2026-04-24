@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../middleware";
-import { ApiResponse, getPermissionsByRoleId } from "../../utils";
+import { ApiResponse, getPermissionsByRoleId, getUserRole } from "../../utils";
 import PERMISSIONS from "../../constants/Permissions";
 const db = require("../../models");
 const Event = db.events;
@@ -13,36 +13,39 @@ class DashboardController {
     try {
       const { userId, roleId, isSuperAdmin } = (req as any).user;
       const permissions = getPermissionsByRoleId(roleId, isSuperAdmin);
-
+      const role = getUserRole(roleId);
+      const isSupervisor = role?.name == "Supervisor";
       const summary: any = {};
 
-      // 1. Events Count
-      summary.totalEvents = await Event.count({
-        where: { status: { [Op.ne]: "Cancelled" } }
-      });
+      // 1. Events and Active/Confirmed Events count
+      if (permissions[PERMISSIONS.VIEW_EVENT]) {
+        summary.totalEvents = await Event.count();
 
-      // 2. Active/Confirmed Events Count
-      summary.activeEvents = await Event.count({
-        where: { status: "Confirmed" }
-      });
+        summary.cancelledEvents = await Event.count({
+          where: { status: "Cancelled" }
+        });
 
-      // 3. Total Users/Staff Count (Conditional)
+        summary.activeEvents = await Event.count({
+          where: { status: "Confirmed" }
+        });
+      }
+
+      // 2. Total Users/Staff Count (Conditional)
       if (permissions[PERMISSIONS.VIEW_USER]) {
         summary.totalStaff = await User.count({
           where: { isSuperAdmin: false }
         });
       }
 
-      // 4. Pending Applications Count (Conditional)
-      // Usually only admins/supervisors see this
-      if (permissions[PERMISSIONS.UPDATE_EVENT] || isSuperAdmin) {
+      // 3. Pending Applications Count (Conditional)
+      if (permissions[PERMISSIONS.VIEW_EVENT] || isSuperAdmin) {
         summary.pendingApps = await EventRequest.count({
           where: { status: "pending" }
         });
       }
 
-      // 5. User Specific Stats
-      if (!isSuperAdmin) {
+      // 4. User Specific Stats (USER SPECIFIC)
+      if (!isSuperAdmin || isSupervisor) {
         summary.applied = await EventRequest.count({
           where: { userId }
         });
@@ -54,10 +57,10 @@ class DashboardController {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         summary.upcoming = await Event.count({
-            where: {
-                eventDate: { [Op.gte]: today },
-                status: { [Op.ne]: "Cancelled" }
-            }
+          where: {
+            eventDate: { [Op.gte]: today },
+            status: { [Op.ne]: "Cancelled" }
+          }
         });
       }
 

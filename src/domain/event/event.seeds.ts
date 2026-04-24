@@ -309,6 +309,38 @@ class EventController {
       return res.status(500).json(new ApiResponse(500, "Failed to fetch applications.", error));
     }
   });
+
+  // GET HIGH DEMAND EVENTS
+  static getHighDemand = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const events = await Event.findAll({
+        where: {
+          eventDate: { [Op.gte]: today },
+          status: { [Op.ne]: "Cancelled" }
+        },
+        include: [
+          {
+            model: EventStaffRequirements,
+            as: "staffRequirements",
+          },
+        ],
+        order: [["eventDate", "ASC"]],
+      });
+
+      const highDemandEvents = events.filter((e: any) => {
+        const total = e.staffRequirements?.reduce((sum: number, r: any) => sum + r.count, 0) || 0;
+        return total > 100;
+      });
+
+      return res.json(new ApiResponse(200, "High-demand events fetched successfully.", highDemandEvents));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch high-demand events.", error));
+    }
+  });
 }
 
 export default EventController;

@@ -11,6 +11,9 @@ const router = Router();
 // Get all events
 router.get("/", protectRoute, EventController.getAll);
 
+// Get high demand events
+router.get("/high-demand", protectRoute, EventController.getHighDemand);
+
 // Create event
 router.post("/", protectRoute, EventController.create);
 
