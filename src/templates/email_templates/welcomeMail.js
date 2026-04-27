@@ -94,6 +94,7 @@ const welcomeEmail = (user, jwtToken) => {
 
       transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
+                  console.log("Error sending welcome email", error);
                   emailLogger.error(
                         `Error sending welcome email: ${JSON.stringify({
                               error: error.message,
