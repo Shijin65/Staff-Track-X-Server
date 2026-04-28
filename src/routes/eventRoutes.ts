@@ -17,8 +17,14 @@ router.get("/high-demand", protectRoute, EventController.getHighDemand);
 // Create event
 router.post("/", protectRoute, EventController.create);
 
+// Get available events for user
+router.get("/available", protectRoute, EventController.getAvailableForUser);
+
 // Get single event
 router.get("/:eventId", protectRoute, EventController.getById);
+
+// Get event requirements
+router.get("/:eventId/requirements", protectRoute, EventController.getEventRequirements);
 
 // Update event
 router.put("/:eventId", protectRoute, EventController.update);
