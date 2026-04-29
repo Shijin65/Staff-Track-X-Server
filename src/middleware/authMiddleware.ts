@@ -53,9 +53,9 @@ const protectedMiddleware: RequestHandler = asyncHandler(
         }
 
         if (!user.isActive) {
-          return res.status(403).json(
+          return res.status(405).json(
             new ApiResponse(
-              403,
+              405,
               "Your account is inactive. Please contact the administrator."
             )
           );
