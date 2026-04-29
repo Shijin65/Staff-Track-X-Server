@@ -96,6 +96,84 @@ class EventController {
     }
   });
 
+  // GET AVAILABLE EVENTS FOR USER
+  static getAvailableForUser = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const {
+        Page = 1,
+        Limit = 10,
+        SearchQuery = "" } = req.query;
+
+      const page = parseInt(Page as string) || 1;
+      let limit = parseInt(Limit as string) || 10;
+
+      const MAX_LIMIT = 100;
+      if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+
+      const offset = (page - 1) * limit;
+
+      const userId = (req as any).user?.userId;
+      if (!userId) {
+        return res.status(401).json(new ApiResponse(401, "User not authenticated."));
+      }
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json(new ApiResponse(404, "User not found."));
+      }
+
+      const roleId = user.roleId;
+
+      const whereClause: any = {};
+      if (SearchQuery) {
+        whereClause.title = { [Op.iLike]: `%${SearchQuery}%` };
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      whereClause.eventDate = { [Op.gte]: today };
+      whereClause.status = { [Op.ne]: "Cancelled" };
+      whereClause["$eventRequests.request_id$"] = { [Op.is]: null };
+
+      const includeClause: any[] = [
+        {
+          model: EventStaffRequirements,
+          as: "staffRequirements",
+          required: true,
+          where: { roleId },
+        },
+        {
+          model: EventRequest,
+          as: "eventRequests",
+          required: false,
+          attributes: [],
+          where: { userId },
+        }
+      ];
+
+      const { count, rows } = await Event.findAndCountAll({
+        where: whereClause,
+        limit,
+        offset,
+        order: [["eventDate", "DESC"]],
+        include: includeClause,
+        distinct: true,
+        subQuery: false,
+      });
+
+      return res.json(
+        new ApiResponse(200, "Available events fetched successfully.", rows, {
+          totalCount: count,
+          totalPages: Math.ceil(count / limit),
+          itemCount: rows.length,
+        })
+      );
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch available events.", error));
+    }
+  });
+
   // GET EVENT BY ID
   static getById = asyncHandler(async (req: Request, res: Response) => {
     try {
@@ -136,6 +214,41 @@ class EventController {
     } catch (error) {
       console.log(error);
       return res.status(500).json(new ApiResponse(500, "Failed to fetch event.", error));
+    }
+  });
+
+  // GET EVENT REQUIREMENTS
+  static getEventRequirements = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { eventId } = req.params;
+
+      const requirements = await EventStaffRequirements.findAll({
+        where: { eventId }
+      });
+
+      const confirmedRequests = await EventRequest.findAll({
+        where: { eventId, status: "confirmed" },
+        attributes: ["roleId", [db.sequelize.fn("COUNT", db.sequelize.col("request_id")), "confirmedCount"]],
+        group: ["roleId"]
+      });
+
+      const confirmedCountsByRole = confirmedRequests.reduce((acc: any, curr: any) => {
+        acc[curr.roleId] = parseInt(curr.dataValues.confirmedCount, 10);
+        return acc;
+      }, {});
+
+      const payload = requirements.map((req: any) => {
+        const plainReq = req.get({ plain: true });
+        return {
+          ...plainReq,
+          confirmedCount: confirmedCountsByRole[plainReq.roleId] || 0
+        };
+      });
+
+      return res.json(new ApiResponse(200, "Event requirements fetched successfully.", payload));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch event requirements.", error));
     }
   });
 
@@ -316,18 +429,36 @@ class EventController {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const events = await Event.findAll({
-        where: {
-          eventDate: { [Op.gte]: today },
-          status: { [Op.ne]: "Cancelled" }
+      const userId = (req as any).user?.userId;
+
+      const whereClause: any = {
+        eventDate: { [Op.gte]: today },
+        status: { [Op.ne]: "Cancelled" }
+      };
+
+      const includeClause: any[] = [
+        {
+          model: EventStaffRequirements,
+          as: "staffRequirements",
         },
-        include: [
-          {
-            model: EventStaffRequirements,
-            as: "staffRequirements",
-          },
-        ],
+      ];
+
+      if (userId) {
+        includeClause.push({
+          model: EventRequest,
+          as: "eventRequests",
+          required: false,
+          attributes: [],
+          where: { userId },
+        });
+        whereClause["$eventRequests.request_id$"] = { [Op.is]: null };
+      }
+
+      const events = await Event.findAll({
+        where: whereClause,
+        include: includeClause,
         order: [["eventDate", "ASC"]],
+        subQuery: false,
       });
 
       const highDemandEvents = events.filter((e: any) => {
