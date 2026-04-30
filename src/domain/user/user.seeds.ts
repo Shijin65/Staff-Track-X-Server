@@ -31,88 +31,94 @@ class UserController {
   static getAll = asyncHandler(async (req, res) => {
 
     try {
-    const {
-      SortBy = "updatedAt",
-      SortByAscending = "false",
-      Page = 1,
-      Limit = 10,
-      SearchQuery = "",
-      IsActive,
-    } = req.query;
+      const {
+        SortBy = "updatedAt",
+        SortByAscending = "false",
+        Page = 1,
+        Limit = 10,
+        SearchQuery = "",
+        IsActive,
+      } = req.query;
 
-    const page = parseInt(Page as string) || 1;
-    let limit = parseInt(Limit as string) || 10;
-    
-    // Set a maximum limit to prevent heavy queries
-    const MAX_LIMIT = 100;
-    if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+      const page = parseInt(Page as string) || 1;
+      let limit = parseInt(Limit as string) || 10;
 
-    const offset = (page - 1) * limit;
-    const sortDirection = SortByAscending === "true" ? "ASC" : "DESC";
+      // Set a maximum limit to prevent heavy queries
+      const MAX_LIMIT = 100;
+      if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+
+      const offset = (page - 1) * limit;
+      const sortDirection = SortByAscending === "true" ? "ASC" : "DESC";
 
 
-    // Base WHERE
-    const whereClause: any = {
-      userId: { [Op.ne]: SUPER_ADMIN_UID },
-    };
+      // Base WHERE
+      const whereClause: any = {
+        userId: { [Op.ne]: SUPER_ADMIN_UID },
+      };
 
-    // Search
-    if (SearchQuery) {
-      const search = `%${(SearchQuery as string).toLowerCase()}%`;
-      whereClause[Op.or] = [
-        { firstName: { [Op.iLike]: search } },
-        { lastName: { [Op.iLike]: search } },
-        { email: { [Op.iLike]: search } },
-      ];
+      // Search
+      if (SearchQuery) {
+        const search = `%${(SearchQuery as string).toLowerCase()}%`;
+        whereClause[Op.or] = [
+          { firstName: { [Op.iLike]: search } },
+          { lastName: { [Op.iLike]: search } },
+          { email: { [Op.iLike]: search } },
+        ];
+      }
+
+      // Active filter
+      if (IsActive === "true" || IsActive === "false") {
+        whereClause.isActive = IsActive === "true";
+      }
+
+      // Sorting
+      let order: any = [[SortBy, sortDirection]];
+      if (SortBy === "fullName") {
+        order = [
+          ["firstName", sortDirection],
+          ["lastName", sortDirection],
+        ];
+      }
+
+      // Query
+      const count = await User.count({ where: whereClause });
+      const rows = await User.findAll({
+        where: whereClause,
+        include: [{ model: Attachment, as: "attachment" }],
+        offset,
+        limit,
+        order,
+      });
+
+      // Format response
+      const data = rows.map((user) => {
+        const userRoleDetails = getUserRole(user.roleId);
+        return {
+          userId: user.userId,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          isActive: user.isActive,
+          isVerified: user.isVerified,
+          updatedAt: user.updatedAt,
+          attachment: user.attachment,
+          role: userRoleDetails
+            ? { roleId: userRoleDetails.roleId, title: userRoleDetails.name }
+            : null,
+        };
+      });
+
+      return res.json(
+        new ApiResponse(200, "Success", data, {
+          totalCount: count,
+          totalPages: Math.ceil(count / limit),
+          itemCount: data.length,
+        })
+      );
+    } catch (error) {
+      console.log(error);
+      res.status(400).json(new ApiResponse(400, "Failed to get Users."));
     }
-
-    // Active filter
-    if (IsActive === "true" || IsActive === "false") {
-      whereClause.isActive = IsActive === "true";
-    }
-
-    // Sorting
-    let order: any = [[SortBy, sortDirection]];
-    if (SortBy === "fullName") {
-      order = [
-        ["firstName", sortDirection],
-        ["lastName", sortDirection],
-      ];
-    }
-
-    // Query
-    const count = await User.count({ where: whereClause });
-    const rows = await User.findAll({
-      where: whereClause,
-      include: [{ model: Attachment, as: "attachment" }],
-      offset,
-      limit,
-      order,
-    });
-
-    // Format response
-    const data = rows.map((user) => ({
-      userId: user.userId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      isActive: user.isActive,
-      isVerified: user.isVerified,
-      updatedAt: user.updatedAt,
-      attachment: user.attachment
-    }));
-
-    return res.json(
-      new ApiResponse(200, "Success", data, {
-        totalCount: count,
-        totalPages: Math.ceil(count / limit),
-        itemCount: data.length,
-      })
-    );
-  } catch (error) {
-    console.log(error);
-    res.status(400).json(new ApiResponse(400, "Failed to get Users."));
-  }
   });
 
   // GET USER BY ID   ////////////////////////////////////////
@@ -855,7 +861,7 @@ class UserController {
 
       const diskFileName = `${attachment.picId}.${attachment.fileExtension}`;
       const filePath = await profileUploader.fetchFile(diskFileName);
-      
+
       res.setHeader("Content-Type", attachment.contentType || "application/octet-stream");
       res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // Cache for 1 year
       return res.sendFile(filePath);

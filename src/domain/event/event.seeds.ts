@@ -32,7 +32,7 @@ class EventController {
         Page = 1,
         Limit = 10,
         SearchQuery = "",
-        isUpcoming } = req.query;
+        type } = req.query;
 
       const page = parseInt(Page as string) || 1;
       let limit = parseInt(Limit as string) || 10;
@@ -54,10 +54,21 @@ class EventController {
         },
       ];
 
-      if (isUpcoming === "true") {
+      if (type === "upcoming" || type === "today") {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        whereClause.eventDate = { [Op.gte]: today };
+
+        if (type === "today") {
+          const tomorrow = new Date(today);
+          tomorrow.setDate(today.getDate() + 1);
+          whereClause.eventDate = {
+            [Op.gte]: today,
+            [Op.lt]: tomorrow,
+          };
+        } else {
+          whereClause.eventDate = { [Op.gte]: today };
+        }
+
         whereClause.status = { [Op.ne]: "Cancelled" };
 
         const userId = (req as any).user?.userId;
@@ -72,6 +83,8 @@ class EventController {
           whereClause["$eventRequests.request_id$"] = { [Op.is]: null };
         }
       }
+
+
 
       const { count, rows } = await Event.findAndCountAll({
         where: whereClause,
@@ -285,6 +298,33 @@ class EventController {
     } catch (error) {
       console.log(error);
       return res.status(500).json(new ApiResponse(500, "Failed to delete event.", error));
+    }
+  });
+
+  // MULTIPLE DELETE EVENTS
+  static deleteMany = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { ids } = req.body;
+      const events = await Event.findAll({
+        where: {
+          eventId: { [Op.in]: ids },
+        },
+        raw: true,
+      });
+
+      if (!events || events.length === 0) {
+        return res.status(404).json(new ApiResponse(404, "Event(s) Not Found."));
+      }
+
+      await Event.destroy({
+        where: {
+          eventId: { [Op.in]: ids },
+        },
+      });
+      return res.json(new ApiResponse(200, "Event(s) Removed."));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to delete Event(s).", error));
     }
   });
 

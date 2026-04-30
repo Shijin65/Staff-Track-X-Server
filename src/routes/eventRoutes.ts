@@ -32,6 +32,9 @@ router.put("/:eventId", protectRoute, EventController.update);
 // Delete event
 router.delete("/:eventId", protectRoute, EventController.delete);
 
+// Multiple delete
+router.post("/multiple-delete", protectRoute, EventController.deleteMany);
+
 
 /**
  * EVENT APPLICATIONS

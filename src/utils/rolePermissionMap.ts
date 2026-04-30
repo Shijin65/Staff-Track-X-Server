@@ -47,9 +47,9 @@ export const ROLES = {
         permissions: [],
     },
 
-    HOUSEKEEPING: {
+    HOUSE_KEEPING: {
         roleId: 1009,
-        name: "housekeeping",
+        name: "house_keeping",
         permissions: [],
     },
     STAFF: {
