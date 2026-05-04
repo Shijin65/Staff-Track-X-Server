@@ -47,12 +47,7 @@ class EventController {
         whereClause.title = { [Op.iLike]: `%${SearchQuery}%` };
       }
 
-      const includeClause: any[] = [
-        {
-          model: EventStaffRequirements,
-          as: "staffRequirements",
-        },
-      ];
+      const includeClause: any[] = [];
 
       if (type === "upcoming" || type === "today") {
         const today = new Date();
@@ -88,6 +83,26 @@ class EventController {
 
       const { count, rows } = await Event.findAndCountAll({
         where: whereClause,
+        attributes: {
+          include: [
+            [
+              db.sequelize.literal(`(
+                SELECT CAST(COALESCE(SUM(count), 0) AS INTEGER)
+                FROM event_staff_requirements AS esr
+                WHERE esr.event_id = events.event_id
+              )`),
+              "staffRequirementCount",
+            ],
+            [
+              db.sequelize.literal(`(
+                SELECT CAST(COUNT(*) AS INTEGER)
+                FROM event_users AS eu
+                WHERE eu.event_id = events.event_id
+              )`),
+              "confirmedStaffCount",
+            ],
+          ],
+        },
         limit,
         offset,
         order: [["eventDate", "DESC"]],
