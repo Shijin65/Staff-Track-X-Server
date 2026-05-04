@@ -26,6 +26,9 @@ router.get("/:eventId", protectRoute, EventController.getById);
 // Get event requirements
 router.get("/:eventId/requirements", protectRoute, EventController.getEventRequirements);
 
+// Get event attendance details
+router.get("/:eventId/attendance", protectRoute, EventController.getAttendanceDetails);
+
 // Update event
 router.put("/:eventId", protectRoute, EventController.update);
 

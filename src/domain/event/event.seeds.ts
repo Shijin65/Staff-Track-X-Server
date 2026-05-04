@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../middleware";
-import { ApiResponse } from "../../utils";
+import { ApiResponse, getUserRole } from "../../utils";
 const db = require("../../models");
 const Event = db.events;
 const EventStaffRequirements = db.event_staff_requirements;
@@ -525,6 +525,66 @@ class EventController {
     } catch (error) {
       console.log(error);
       return res.status(500).json(new ApiResponse(500, "Failed to fetch high-demand events.", error));
+    }
+  });
+  // GET ATTENDANCE DETAILS
+  static getAttendanceDetails = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { eventId } = req.params;
+      const { reportedStatus = "all" } = req.query;
+
+      const event = await Event.findOne({ where: { eventId }, attributes: ["title", "eventDate", "startTime", "eventVenue", "reportingTime", "city", "district", "status"] });
+      if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
+
+      const totalStaffCount = await EventUsers.count({ where: { eventId } });
+      const reportedStaffCount = await EventUsers.count({ where: { eventId, attendanceStatus: "reported" } });
+      const notReportedStaffCount = totalStaffCount - reportedStaffCount;
+
+      const whereClause: any = { eventId };
+      if (reportedStatus === "reported") {
+        whereClause.attendanceStatus = "reported";
+      } else if (reportedStatus === "not_reported") {
+        whereClause.attendanceStatus = { [Op.ne]: "reported" };
+      }
+
+      const staff = await EventUsers.findAll({
+        where: whereClause,
+        attributes: ["confirmationId", "eventId", "userId", "roleId", "status", "checkInTime", "checkOutTime", "rating", "comments", "attendanceStatus"],
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["userId", "firstName", "lastName", "mobileNumber", "email", "rating"],
+          },
+        ],
+      });
+
+      // Grouping by role
+      const groupedStaff: any = {};
+      staff.forEach((s: any) => {
+        const role = getUserRole(s.roleId);
+        const roleName = role ? role.name : "Staff";
+        if (!groupedStaff[roleName]) {
+          groupedStaff[roleName] = [];
+        }
+        groupedStaff[roleName].push({
+          ...s.get({ plain: true }),
+          roleName
+        });
+      });
+
+      const responseData = {
+        event,
+        totalStaffCount,
+        reportedStaffCount,
+        notReportedStaffCount,
+        staffDetails: groupedStaff,
+      };
+
+      return res.json(new ApiResponse(200, "Attendance details fetched successfully.", responseData));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch attendance details.", error));
     }
   });
 }
