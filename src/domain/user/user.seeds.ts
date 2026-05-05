@@ -349,7 +349,10 @@ class UserController {
             expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
           }
         );
-        await welcomeEmail(newUser, jwtToken);
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+        const passwordSetupLink = `${frontendUrl}/auth/reset-password?token=${jwtToken}`;
+        console.log("passwordSetupLink", passwordSetupLink);
+        await welcomeEmail(newUser );
         newUserDetails.isMailSend = true;
         await newUserDetails.save({ transaction: t });
       }
