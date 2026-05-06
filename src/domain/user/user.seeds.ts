@@ -349,10 +349,7 @@ class UserController {
             expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
           }
         );
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-        const passwordSetupLink = `${frontendUrl}/auth/reset-password?token=${jwtToken}`;
-        console.log("passwordSetupLink", passwordSetupLink);
-        await welcomeEmail(newUser );
+        await welcomeEmail(newUser,  jwtToken);
         newUserDetails.isMailSend = true;
         await newUserDetails.save({ transaction: t });
       }
@@ -705,16 +702,11 @@ class UserController {
   // RESET PASSWORD TRIGGER // RESET PASSWORD MAIL SENDER ////////////////////////////////////////
   static resetPassword = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { password } = req.body;
-
     try {
       const user = await User.findByPk(id);
       if (!user) {
         return res.status(404).json(new ApiResponse(404, "User Not Found."));
       }
-
-      user.temporaryPassword = password;
-      await user.save();
 
       const jwtToken = await jwt.sign(
         { userId: user.userId, linkType: "passwordReset" },
@@ -723,11 +715,8 @@ class UserController {
           expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
         }
       );
-
-      // Send reset password email
-      await resetPasswordEmail(user.dataValues, password, jwtToken);
-
-      res.json(new ApiResponse(200, "Password Reset Successful."));
+      await resetPasswordEmail(user.dataValues, jwtToken);
+      return res.json(new ApiResponse(200, "Password Reset Successful."));
     } catch (error) {
       console.error("Error during password reset:", error);
       res
@@ -764,7 +753,7 @@ class UserController {
       );
 
       // Send reset password email
-      await resetPasswordEmail(user.dataValues, password, jwtToken);
+      await resetPasswordEmail(user.dataValues, jwtToken);
 
       res.json(new ApiResponse(200, "Password Reset Successful."));
     } catch (error) {
