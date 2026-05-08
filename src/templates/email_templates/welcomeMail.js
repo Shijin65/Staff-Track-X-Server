@@ -1,10 +1,11 @@
 const { response } = require("express");
 const { transporter, emailLogger } = require("../../config");
+const { SMTP_FROM_MAIL } = require("../../config/envConfig");
 
 const welcomeEmail = (user, jwtToken) => {
       const URL = process.env.FRONTEND_URL;
       const mailOptions = {
-            from: `"Caters Hub" <${process.env.SMTP_USER}>`,
+            from: `"Caters Hub" <${SMTP_FROM_MAIL}>`,
             to: user.email,
             subject: "Welcome to Caters Hub",
             html: `

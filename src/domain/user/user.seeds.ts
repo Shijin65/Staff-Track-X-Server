@@ -349,8 +349,15 @@ class UserController {
             expiresIn: PASSWORD_SETUP_LINK_EXPIRY,
           }
         );
-        await welcomeEmail(newUser,  jwtToken);
-        newUserDetails.isMailSend = true;
+        try {
+          await welcomeEmail(newUser, jwtToken);
+          newUserDetails.isMailSend = true;
+        }
+        catch (error) {
+          console.log("Error sending email:", error);
+          newUserDetails.isMailSend = false;
+        }
+
         await newUserDetails.save({ transaction: t });
       }
 
