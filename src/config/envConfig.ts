@@ -37,6 +37,7 @@ export const NODE_ENV = process.env.NODE_ENV
   export const SMTP_USER = process.env.SMTP_USER
   export const SMTP_PASS = process.env.SMTP_PASS
   export const SMTP_REJECT_UNAUTHORIZED = process.env.SMTP_REJECT_UNAUTHORIZED
+  export const SMTP_FROM_MAIL = process.env.SMTP_FROM_MAIL
 
   // LOGGER
   export const MAIN_LOG_DIR = process.env.MAIN_LOG_DIR
