@@ -41,6 +41,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.5.0",
+    "@types/nodemailer": "^8.0.0",
     "eslint": "^9.14.0",
     "nodemon": "^3.1.7",
     "sequelize-cli": "^6.6.2",

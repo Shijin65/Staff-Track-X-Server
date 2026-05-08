@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../middleware";
-import { ApiResponse } from "../../utils";
+import { ApiResponse, getUserRole } from "../../utils";
 const db = require("../../models");
 const Event = db.events;
 const EventStaffRequirements = db.event_staff_requirements;
@@ -32,7 +32,7 @@ class EventController {
         Page = 1,
         Limit = 10,
         SearchQuery = "",
-        isUpcoming } = req.query;
+        type } = req.query;
 
       const page = parseInt(Page as string) || 1;
       let limit = parseInt(Limit as string) || 10;
@@ -47,17 +47,23 @@ class EventController {
         whereClause.title = { [Op.iLike]: `%${SearchQuery}%` };
       }
 
-      const includeClause: any[] = [
-        {
-          model: EventStaffRequirements,
-          as: "staffRequirements",
-        },
-      ];
+      const includeClause: any[] = [];
 
-      if (isUpcoming === "true") {
+      if (type === "upcoming" || type === "today") {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        whereClause.eventDate = { [Op.gte]: today };
+
+        if (type === "today") {
+          const tomorrow = new Date(today);
+          tomorrow.setDate(today.getDate() + 1);
+          whereClause.eventDate = {
+            [Op.gte]: today,
+            [Op.lt]: tomorrow,
+          };
+        } else {
+          whereClause.eventDate = { [Op.gte]: today };
+        }
+
         whereClause.status = { [Op.ne]: "Cancelled" };
 
         const userId = (req as any).user?.userId;
@@ -73,8 +79,30 @@ class EventController {
         }
       }
 
+
+
       const { count, rows } = await Event.findAndCountAll({
         where: whereClause,
+        attributes: {
+          include: [
+            [
+              db.sequelize.literal(`(
+                SELECT CAST(COALESCE(SUM(count), 0) AS INTEGER)
+                FROM event_staff_requirements AS esr
+                WHERE esr.event_id = events.event_id
+              )`),
+              "staffRequirementCount",
+            ],
+            [
+              db.sequelize.literal(`(
+                SELECT CAST(COUNT(*) AS INTEGER)
+                FROM event_users AS eu
+                WHERE eu.event_id = events.event_id
+              )`),
+              "confirmedStaffCount",
+            ],
+          ],
+        },
         limit,
         offset,
         order: [["eventDate", "DESC"]],
@@ -93,6 +121,84 @@ class EventController {
     } catch (error) {
       console.log(error);
       return res.status(500).json(new ApiResponse(500, "Failed to fetch events.", error));
+    }
+  });
+
+  // GET AVAILABLE EVENTS FOR USER
+  static getAvailableForUser = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const {
+        Page = 1,
+        Limit = 10,
+        SearchQuery = "" } = req.query;
+
+      const page = parseInt(Page as string) || 1;
+      let limit = parseInt(Limit as string) || 10;
+
+      const MAX_LIMIT = 100;
+      if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+
+      const offset = (page - 1) * limit;
+
+      const userId = (req as any).user?.userId;
+      if (!userId) {
+        return res.status(401).json(new ApiResponse(401, "User not authenticated."));
+      }
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json(new ApiResponse(404, "User not found."));
+      }
+
+      const roleId = user.roleId;
+
+      const whereClause: any = {};
+      if (SearchQuery) {
+        whereClause.title = { [Op.iLike]: `%${SearchQuery}%` };
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      whereClause.eventDate = { [Op.gte]: today };
+      whereClause.status = { [Op.ne]: "Cancelled" };
+      whereClause["$eventRequests.request_id$"] = { [Op.is]: null };
+
+      const includeClause: any[] = [
+        {
+          model: EventStaffRequirements,
+          as: "staffRequirements",
+          required: true,
+          where: { roleId },
+        },
+        {
+          model: EventRequest,
+          as: "eventRequests",
+          required: false,
+          attributes: [],
+          where: { userId },
+        }
+      ];
+
+      const { count, rows } = await Event.findAndCountAll({
+        where: whereClause,
+        limit,
+        offset,
+        order: [["eventDate", "DESC"]],
+        include: includeClause,
+        distinct: true,
+        subQuery: false,
+      });
+
+      return res.json(
+        new ApiResponse(200, "Available events fetched successfully.", rows, {
+          totalCount: count,
+          totalPages: Math.ceil(count / limit),
+          itemCount: rows.length,
+        })
+      );
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch available events.", error));
     }
   });
 
@@ -139,6 +245,41 @@ class EventController {
     }
   });
 
+  // GET EVENT REQUIREMENTS
+  static getEventRequirements = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { eventId } = req.params;
+
+      const requirements = await EventStaffRequirements.findAll({
+        where: { eventId }
+      });
+
+      const confirmedRequests = await EventRequest.findAll({
+        where: { eventId, status: "confirmed" },
+        attributes: ["roleId", [db.sequelize.fn("COUNT", db.sequelize.col("request_id")), "confirmedCount"]],
+        group: ["roleId"]
+      });
+
+      const confirmedCountsByRole = confirmedRequests.reduce((acc: any, curr: any) => {
+        acc[curr.roleId] = parseInt(curr.dataValues.confirmedCount, 10);
+        return acc;
+      }, {});
+
+      const payload = requirements.map((req: any) => {
+        const plainReq = req.get({ plain: true });
+        return {
+          ...plainReq,
+          confirmedCount: confirmedCountsByRole[plainReq.roleId] || 0
+        };
+      });
+
+      return res.json(new ApiResponse(200, "Event requirements fetched successfully.", payload));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch event requirements.", error));
+    }
+  });
+
   // UPDATE EVENT
   static update = asyncHandler(async (req: Request, res: Response) => {
     try {
@@ -172,6 +313,33 @@ class EventController {
     } catch (error) {
       console.log(error);
       return res.status(500).json(new ApiResponse(500, "Failed to delete event.", error));
+    }
+  });
+
+  // MULTIPLE DELETE EVENTS
+  static deleteMany = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { ids } = req.body;
+      const events = await Event.findAll({
+        where: {
+          eventId: { [Op.in]: ids },
+        },
+        raw: true,
+      });
+
+      if (!events || events.length === 0) {
+        return res.status(404).json(new ApiResponse(404, "Event(s) Not Found."));
+      }
+
+      await Event.destroy({
+        where: {
+          eventId: { [Op.in]: ids },
+        },
+      });
+      return res.json(new ApiResponse(200, "Event(s) Removed."));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to delete Event(s).", error));
     }
   });
 
@@ -316,18 +484,36 @@ class EventController {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const events = await Event.findAll({
-        where: {
-          eventDate: { [Op.gte]: today },
-          status: { [Op.ne]: "Cancelled" }
+      const userId = (req as any).user?.userId;
+
+      const whereClause: any = {
+        eventDate: { [Op.gte]: today },
+        status: { [Op.ne]: "Cancelled" }
+      };
+
+      const includeClause: any[] = [
+        {
+          model: EventStaffRequirements,
+          as: "staffRequirements",
         },
-        include: [
-          {
-            model: EventStaffRequirements,
-            as: "staffRequirements",
-          },
-        ],
+      ];
+
+      if (userId) {
+        includeClause.push({
+          model: EventRequest,
+          as: "eventRequests",
+          required: false,
+          attributes: [],
+          where: { userId },
+        });
+        whereClause["$eventRequests.request_id$"] = { [Op.is]: null };
+      }
+
+      const events = await Event.findAll({
+        where: whereClause,
+        include: includeClause,
         order: [["eventDate", "ASC"]],
+        subQuery: false,
       });
 
       const highDemandEvents = events.filter((e: any) => {
@@ -341,6 +527,136 @@ class EventController {
       return res.status(500).json(new ApiResponse(500, "Failed to fetch high-demand events.", error));
     }
   });
+
+  // GET EVENT SUMMARY
+  static getEventSummary = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { eventId } = req.params;
+
+      const event = await Event.findOne({ where: { eventId }, attributes: ["title", "eventDate", "startTime", "eventVenue", "reportingTime", "city", "district", "status"] });
+      if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
+
+      const totalStaffCount = await EventUsers.count({ where: { eventId } });
+      const reportedStaffCount = await EventUsers.count({ where: { eventId, attendanceStatus: "reported" } });
+      const notReportedStaffCount = totalStaffCount - reportedStaffCount;
+      const applicationsCount = await EventRequest.count({ where: { eventId } });
+
+      return res.json(new ApiResponse(200, "Event summary fetched successfully.", event, {
+        total: totalStaffCount,
+        reported: reportedStaffCount,
+        notReported: notReportedStaffCount,
+        applications: applicationsCount,
+      }));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch event summary.", error));
+    }
+  });
+
+  // GET STAFFS DETAILS
+  static getStaffDetails = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { eventId } = req.params;
+      const {
+        reportedStatus = "all",
+        Page = 1,
+        Limit = 10,
+        SearchQuery = ""
+      } = req.query;
+
+      const page = parseInt(Page as string) || 1;
+      let limit = parseInt(Limit as string) || 10;
+      const MAX_LIMIT = 100;
+      if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+      const offset = (page - 1) * limit;
+
+      const event = await Event.findOne({ where: { eventId }, attributes: ["eventId", "title"] });
+      if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
+
+      const totalStaffCount = await EventUsers.count({ where: { eventId } });
+      const reportedStaffCount = await EventUsers.count({ where: { eventId, attendanceStatus: "reported" } });
+      const notReportedStaffCount = totalStaffCount - reportedStaffCount;
+
+      const whereClause: any = { eventId };
+      if (reportedStatus === "reported") {
+        whereClause.attendanceStatus = "reported";
+      } else if (reportedStatus === "not_reported") {
+        whereClause.attendanceStatus = { [Op.ne]: "reported" };
+      }
+      const userWhere: any = {};
+
+      if (SearchQuery) {
+        userWhere[Op.or] = [
+          { firstName: { [Op.iLike]: `%${SearchQuery}%` } },
+          { lastName: { [Op.iLike]: `%${SearchQuery}%` } },
+          { mobileNumber: { [Op.iLike]: `%${SearchQuery}%` } },
+        ];
+      }
+
+      const { count, rows } = await EventUsers.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["userId", "firstName", "lastName", "mobileNumber"],
+            where: SearchQuery ? userWhere : undefined,  
+            required: !!SearchQuery,                        
+          },
+        ],
+        limit,
+        offset,
+        distinct: true,
+      });
+
+      const staffList = rows.map((s: any) => {
+        const role = getUserRole(s.roleId);
+        const roleName = role ? role.name : "Staff";
+        return {
+          ...s.get({ plain: true }),
+          roleName
+        };
+      });
+
+      return res.json(new ApiResponse(200, "Attendance details fetched successfully.", staffList, {
+        total: totalStaffCount,
+        reported: reportedStaffCount,
+        notReported: notReportedStaffCount,
+        totalCount: count,
+        totalPages: Math.ceil(count / limit),
+        itemCount: staffList.length,
+      }));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch attendance details.", error));
+    }
+  });
+
+  // UPDATE STAFF STATUS
+  static updateStaffStatus = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { eventId, staffId } = req.params;
+      const { status } = req.body;
+
+      const event = await Event.findOne({ where: { eventId }, attributes: ["eventId", "title"] });
+      if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
+
+      const staff = await EventUsers.findOne({ where: { eventId, userId: staffId } });
+      if (!staff) return res.status(404).json(new ApiResponse(404, "Staff not found for this event."));
+
+      staff.attendanceStatus = status;
+      if(status === "reported"){
+        staff.checkInTime = new Date();
+      }
+      await staff.save();
+
+      return res.json(new ApiResponse(200, "Staff status updated successfully.", staff));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to update staff status.", error));
+    }
+  });
+
 }
 
 export default EventController;

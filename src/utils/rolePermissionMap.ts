@@ -16,9 +16,7 @@ export const ROLES = {
     CAPTAIN: {
         roleId: 1004,
         name: "captain",
-        permissions: Object.values(PERMISSIONS).filter(
-            (permission) => ![PERMISSIONS.CREATE_USER, PERMISSIONS.UPDATE_USER, PERMISSIONS.DELETE_USER].includes(permission)
-        ),
+        permissions: Object.values(PERMISSIONS),
     },
 
     VICE_CAPTAIN: {
@@ -47,9 +45,9 @@ export const ROLES = {
         permissions: [],
     },
 
-    HOUSEKEEPING: {
+    HOUSE_KEEPING: {
         roleId: 1009,
-        name: "housekeeping",
+        name: "house_keeping",
         permissions: [],
     },
     STAFF: {

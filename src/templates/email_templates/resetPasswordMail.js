@@ -1,6 +1,6 @@
 const { transporter, emailLogger } = require("../../config");
 
-const resetPasswordEmail = (user, password, jwtToken) => {
+const resetPasswordEmail = (user, jwtToken) => {
   const URL = process.env.FRONTEND_URL;
   const mailOptions = {
     from: `"Caters Hub" <${process.env.SMTP_USER}>`,
@@ -48,23 +48,12 @@ const resetPasswordEmail = (user, password, jwtToken) => {
                       <table width="100%" cellpadding="0" cellspacing="0" style="margin:25px 0;">
                         <tr>
                           <td align="center">
-                            <a href="${URL}/auth/${jwtToken}" 
+                            <a href="${URL}/auth/set-password/${jwtToken}" 
                               style="background:#2563eb; color:#ffffff; padding:14px 28px; 
                               text-decoration:none; border-radius:6px; font-weight:bold; 
                               display:inline-block; font-size:14px;">
                               Change Password
                             </a>
-                          </td>
-                        </tr>
-                      </table>
-
-                      <!-- Temp Credentials Box -->
-                      <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px; padding:15px; margin:20px 0;">
-                        <tr>
-                          <td style="font-size:13px; color:#333;">
-                            <strong>Temporary Login Details:</strong><br /><br />
-                            Email: ${user.email}<br />
-                            Temporary Password: <strong>${password}</strong>
                           </td>
                         </tr>
                       </table>

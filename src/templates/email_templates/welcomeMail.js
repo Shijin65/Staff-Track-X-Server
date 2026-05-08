@@ -46,7 +46,7 @@ const welcomeEmail = (user, jwtToken) => {
                               <table width="100%" cellpadding="0" cellspacing="0" style="margin:30px 0;">
                               <tr>
                                     <td align="center">
-                                    <a href="${URL}/auth/${jwtToken}" 
+                                    <a href="${URL}/auth/set-password/${jwtToken}" 
                                     style="background:#2563eb; color:#ffffff; padding:14px 28px; 
                                     text-decoration:none; border-radius:6px; font-weight:bold; 
                                     display:inline-block; font-size:14px;">
