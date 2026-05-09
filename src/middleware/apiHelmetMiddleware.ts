@@ -7,8 +7,7 @@ const apiHelmet = (req: Request, res: Response, next: NextFunction): void => {
   }
 
   // Content Security Policy
-  res.setHeader("Content-Security-Policy", "default-src 'self'");
-
+  // res.setHeader("Content-Security-Policy", "default-src 'self'");
   // Strict Transport Security
   res.setHeader(
     "Strict-Transport-Security",
