@@ -55,6 +55,9 @@ router.post("/:eventId/applications", protectRoute, EventController.apply);
 // My applications
 router.get("/applications/me", protectRoute, EventController.getMyRequests); 
 
+// My work history
+router.get("/history/me", protectRoute, EventController.getWorkHistory); 
+
 // Approve/Reject
 router.put("/applications/:applicationId", protectRoute, EventController.updateRequestStatus); 
 

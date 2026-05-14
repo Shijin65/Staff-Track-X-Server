@@ -44,7 +44,28 @@ class EventController {
 
       const whereClause: any = {};
       if (SearchQuery) {
-        whereClause.title = { [Op.iLike]: `%${SearchQuery}%` };
+        whereClause[Op.or] = [
+          { title: { [Op.iLike]: `%${SearchQuery}%` } },
+          { eventVenue: { [Op.iLike]: `%${SearchQuery}%` } },
+          { eventType: { [Op.iLike]: `%${SearchQuery}%` } },
+          { status: { [Op.iLike]: `%${SearchQuery}%` } },
+          db.sequelize.where(
+            db.sequelize.fn('to_char', db.sequelize.col('event_date'), 'YYYY-MM-DD'),
+            { [Op.iLike]: `%${SearchQuery}%` }
+          ),
+          db.sequelize.where(
+            db.sequelize.fn('to_char', db.sequelize.col('event_date'), 'DD/MM/YYYY'),
+            { [Op.iLike]: `%${SearchQuery}%` }
+          ),
+          db.sequelize.where(
+            db.sequelize.fn('to_char', db.sequelize.col('event_date'), 'DD Month YYYY'),
+            { [Op.iLike]: `%${SearchQuery}%` }
+          ),
+          db.sequelize.where(
+            db.sequelize.fn('to_char', db.sequelize.col('event_date'), 'Month DD, YYYY'),
+            { [Op.iLike]: `%${SearchQuery}%` }
+          ),
+        ];
       }
 
       const includeClause: any[] = [];
@@ -233,8 +254,24 @@ class EventController {
 
       if (!event) return res.status(404).json(new ApiResponse(404, "Event not found."));
 
+      const plainEvent = event.get({ plain: true });
+
+      if (plainEvent.staffRequirements) {
+        plainEvent.staffRequirements = plainEvent.staffRequirements.map((req: any) => {
+          const role = getUserRole(req.roleId);
+          return { ...req, roleName: role ? role.name : "Unknown" };
+        });
+      }
+
+      if (plainEvent.eventRequests) {
+        plainEvent.eventRequests = plainEvent.eventRequests.map((req: any) => {
+          const role = getUserRole(req.roleId);
+          return { ...req, roleName: role ? role.name : "Unknown" };
+        });
+      }
+
       const responseData = {
-        ...event.get({ plain: true }),
+        ...plainEvent,
         totalApplications,
       };
 
@@ -460,18 +497,40 @@ class EventController {
   static getApplicationsByEvent = asyncHandler(async (req: Request, res: Response) => {
     try {
       const { eventId } = req.params;
+      const { SearchQuery } = req.query;
+
+      const whereClause: any = { eventId };
+      const userWhere: any = {};
+
+      if (SearchQuery) {
+        userWhere[Op.or] = [
+          { firstName: { [Op.iLike]: `%${SearchQuery}%` } },
+          { lastName: { [Op.iLike]: `%${SearchQuery}%` } },
+        ];
+      }
+
       const applications = await EventRequest.findAll({
-        where: { eventId },
+        where: whereClause,
         include: [
           {
             model: User,
             as: "user",
             attributes: ["userId", "firstName", "lastName", "mobileNumber", "rating"],
+            where: Object.keys(userWhere).length > 0 ? userWhere : undefined,
           },
         ],
         order: [["appliedAt", "DESC"]],
       });
-      return res.json(new ApiResponse(200, "Event applications fetched successfully.", applications));
+
+      const responseData = applications.map((app: any) => {
+        const role = getUserRole(app.roleId);
+        return {
+          ...app.toJSON(),
+          roleName: role ? role.name : "Unknown",
+        };
+      });
+
+      return res.json(new ApiResponse(200, "Event applications fetched successfully.", responseData));
     } catch (error) {
       console.log(error);
       return res.status(500).json(new ApiResponse(500, "Failed to fetch applications.", error));
@@ -654,6 +713,36 @@ class EventController {
     } catch (error) {
       console.log(error);
       return res.status(500).json(new ApiResponse(500, "Failed to update staff status.", error));
+    }
+  });
+
+  // GET WORK HISTORY
+  static getWorkHistory = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json(new ApiResponse(401, "User not authenticated."));
+      }
+
+      const history = await EventUsers.findAll({
+        where: { userId },
+        include: [
+          {
+            model: Event,
+            as: "event",
+            attributes: ["eventId", "title", "eventDate", "eventVenue", "eventType", "city", "district", "status", "startTime", "reportingTime"],
+          },
+        ],
+        order: [
+          [{ model: Event, as: "event" }, "eventDate", "DESC"]
+        ],
+      });
+
+      return res.json(new ApiResponse(200, "Work history fetched successfully.", history));
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json(new ApiResponse(500, "Failed to fetch work history.", error));
     }
   });
 
