@@ -437,9 +437,15 @@ class EventController {
             model: Event,
             as: "event",
             attributes: ["eventId", "title", "eventDate", "eventVenue", "reportingTime", "startTime", "eventType", "city", "district", "status"],
+           where: {
+            eventDate: {
+              [Op.gte]: new Date(), 
+            },
           },
-        ],
-        order: [["appliedAt", "DESC"]],
+          required: true,
+        },
+      ],
+      order: [["appliedAt", "DESC"]],
       });
 
       return res.json(new ApiResponse(200, "My requests fetched successfully.", requests));
